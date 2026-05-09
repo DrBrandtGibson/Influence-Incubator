@@ -31,7 +31,7 @@ export const TopNav = ({ variant = "marketing" }) => {
         >
             <div className="container-readable flex items-center justify-between h-16">
                 <Link to="/" className="flex items-center gap-2.5 group" data-testid="logo-home-link">
-                    <img src={LOGO_URL} alt="Influence Incubator" className="h-9 w-9 rounded-md object-contain bg-black" />
+                    <img src={LOGO_URL} alt="Influence Incubator" className="h-10 w-10 rounded-md object-contain" />
                     <span className="font-serif text-lg font-semibold tracking-tight hidden sm:inline">
                         Influence <span className="text-brand-gold">Incubator</span>
                     </span>

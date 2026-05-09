@@ -5,7 +5,7 @@ export const Footer = () => (
         <div className="container-readable py-14 grid gap-10 md:grid-cols-4">
             <div className="md:col-span-2">
                 <div className="flex items-center gap-2.5 mb-4">
-                    <img src={LOGO_URL} alt="Influence Incubator" className="h-9 w-9 rounded-md object-contain bg-black" />
+                    <img src={LOGO_URL} alt="Influence Incubator" className="h-10 w-10 rounded-md object-contain" />
                     <span className="font-serif text-xl">Influence Incubator</span>
                 </div>
                 <p className="text-sm leading-relaxed max-w-md">
@@ -33,7 +33,7 @@ export const Footer = () => (
         </div>
         <div className="border-t border-white/10">
             <div className="container-readable py-6 space-y-4">
-                <p className="text-xs text-brand-cream/70 text-center" data-testid="footer-copyright">
+                <p className="text-xs text-brand-cream/70 text-left" data-testid="footer-copyright">
                     © 2026 Influence Incubator LLC, Dr Brandt Gibson, LLC & Dr Brandt R Gibson. All Rights Reserved
                 </p>
                 <div className="max-w-4xl mx-auto text-[11px] leading-relaxed text-brand-cream/55 text-center space-y-3" data-testid="footer-disclaimer">
