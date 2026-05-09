@@ -1,21 +1,44 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Building2, Compass, Target, Heart, Loader2, Check, Image as ImgIcon } from "lucide-react";
+import { Sparkles, Building2, Compass, Target, Heart, Loader2, Check, Image as ImgIcon, BookOpen, ArrowRight, ArrowLeft, ChevronRight } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
 import { authedFetch } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
-import { DRIVEN_QUESTIONS, MTP_CATEGORIES, SEVEN_LEVELS_DEEP, CHIEF_AIM_PROMPTS, CHIEF_AIM_HORIZONS, BUSINESS_STRUCTURES } from "@/lib/framework";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import {
+    DRIVEN_QUESTIONS, MTP_CATEGORIES, SEVEN_LEVELS_DEEP,
+    CHIEF_AIM_PROMPTS, CHIEF_AIM_HORIZONS, BUSINESS_STRUCTURES,
+    FINDING_PURPOSE_QUESTIONS, FINDING_PURPOSE_PRIORITIES, NAPOLEON_HILL_LEARN_MORE
+} from "@/lib/framework";
 import { STEPS } from "@/lib/steps";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { SortableRanking } from "@/components/ui/SortableRanking";
+import { usePersistedField } from "@/lib/usePersistedField";
 
-const STEP_NUM = 1;
+const TAB_ORDER = ["identity", "purpose", "driven", "mtp", "why", "chief", "output"];
+const TAB_LABELS = {
+    identity: "Identity",
+    purpose: "Finding Your Purpose",
+    driven: "Driven, not Drifter",
+    mtp: "MTP Discovery",
+    why: "7 Levels Deep WHY",
+    chief: "Chief Aim",
+    output: "Your Output"
+};
 
 export default function StepDefine({ plan, getInput, setInput, markStepStatus, gotoStep }) {
     const [tab, setTab] = useState("identity");
     const planId = plan.id;
+
+    const goToTab = (key) => {
+        setTab(key);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    const idx = TAB_ORDER.indexOf(tab);
+    const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
+    const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
 
     return (
         <div data-testid="step-define">
@@ -25,10 +48,11 @@ export default function StepDefine({ plan, getInput, setInput, markStepStatus, g
                 <p className="mt-3 text-muted-foreground max-w-2xl">Mission, Massive Transformative Purpose, Deep WHY, Definite Chief Aim. The foundation everything else stands on.</p>
             </header>
 
-            <Tabs value={tab} onValueChange={setTab} className="">
+            <Tabs value={tab} onValueChange={setTab}>
                 <TabsList className="mb-8 flex-wrap h-auto p-1 bg-secondary/60 rounded-xl">
                     {[
                         ["identity", Building2, "Identity"],
+                        ["purpose", BookOpen, "Finding Your Purpose"],
                         ["driven", Compass, "Driven, not Drifter"],
                         ["mtp", Sparkles, "MTP Discovery"],
                         ["why", Heart, "7 Levels Deep WHY"],
@@ -41,13 +65,30 @@ export default function StepDefine({ plan, getInput, setInput, markStepStatus, g
                     ))}
                 </TabsList>
 
-                <TabsContent value="identity"><BusinessIdentity planId={planId} plan={plan} getInput={getInput} setInput={setInput} /></TabsContent>
+                <TabsContent value="identity"><BusinessIdentity planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
+                <TabsContent value="purpose"><FindingPurpose planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="driven"><DrivenSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="mtp"><MTPSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="why"><DeepWhySection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="chief"><ChiefAimSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="output"><OutputCard planId={planId} plan={plan} getInput={getInput} setInput={setInput} markStepStatus={markStepStatus} gotoStep={gotoStep} /></TabsContent>
             </Tabs>
+
+            {/* Section nav: Prev / Next within Step 1 */}
+            {tab !== "output" && (
+                <div className="mt-12 flex items-center justify-between border-t pt-6" data-testid="define-section-nav">
+                    {prevTab ? (
+                        <Button variant="ghost" onClick={() => goToTab(prevTab)} data-testid="define-prev-button">
+                            <ArrowLeft className="h-4 w-4 mr-2" /> {TAB_LABELS[prevTab]}
+                        </Button>
+                    ) : <span />}
+                    {nextTab && (
+                        <Button onClick={() => goToTab(nextTab)} className="cta-red rounded-full h-11 px-5" data-testid="define-next-button">
+                            Next: {TAB_LABELS[nextTab]} <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -64,10 +105,17 @@ function Section({ title, helper, children, eyebrow }) {
     );
 }
 
-function BusinessIdentity({ planId, plan, getInput, setInput }) {
+// =================== IDENTITY ===================
+function BusinessIdentity({ planId, getInput, setInput }) {
     const [genBusy, setGenBusy] = useState(false);
     const [logoBusy, setLogoBusy] = useState(false);
     const [structBusy, setStructBusy] = useState(false);
+    const chosenStructure = getInput(1, "structure_chosen");
+
+    function pickStructure(key) {
+        setInput(1, "structure_chosen", key);
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "structure_chosen", value: key }) });
+    }
 
     async function generateNames() {
         setGenBusy(true);
@@ -75,13 +123,11 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
             await streamingGenerate({
                 field_key: "business_names",
                 field_label: "Business name brainstorm",
-                instructions: "Generate exactly 5 distinct business name candidates for this venture. For each: 1) the name, 2) a one-line rationale (memorable / meaningful), 3) memorability score (1-10), 4) a 1-line domain hint (.com availability heuristic + alternatives). Format as a clean numbered list. Be original and specific to this user's plan context.",
+                instructions: "Generate exactly 5 distinct business name candidates. For each: 1) the name, 2) a one-line rationale, 3) memorability score (1-10), 4) a 1-line domain hint. Numbered list. Be original and specific to this user's plan context.",
                 planId, stepNum: 1,
                 onText: (t) => setInput(1, "business_names", t)
             });
-        } finally {
-            setGenBusy(false);
-        }
+        } finally { setGenBusy(false); }
     }
 
     async function generateLogoPrompts() {
@@ -90,7 +136,7 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
             await streamingGenerate({
                 field_key: "logo_prompts",
                 field_label: "Logo prompts (Midjourney/DALL·E)",
-                instructions: "Generate exactly 5 detailed image-generation prompts (for Midjourney/DALL·E) for the logo. Each prompt should be vivid, technically specific (style, composition, palette, mood), and tied to the brand's likely identity. Numbered list.",
+                instructions: "Generate exactly 5 detailed image-generation prompts (for Midjourney/DALL·E) for the logo. Vivid, technically specific. Numbered list.",
                 planId, stepNum: 1,
                 onText: (t) => setInput(1, "logo_prompts", t)
             });
@@ -103,7 +149,7 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
             await streamingGenerate({
                 field_key: "structure_recommendation",
                 field_label: "Recommended business structure",
-                instructions: "Recommend the best business structure (Sole Prop / LLC / S-Corp / Non-Profit) for this user. Provide: 1) recommended structure, 2) reasoning grounded in their stage and likely revenue, 3) EIN guidance (1-2 sentences), 4) a generic state-registration link suggestion (e.g. 'search [your state] Secretary of State business registration'). Be concrete and brief.",
+                instructions: "Recommend the best business structure (Sole Prop / LLC / S-Corp / Non-Profit) for this user. Provide: 1) recommended structure, 2) reasoning grounded in their stage and likely revenue, 3) EIN guidance (1-2 sentences), 4) state-registration link suggestion. Be concrete and brief.",
                 planId, stepNum: 1,
                 onText: (t) => setInput(1, "structure_recommendation", t)
             });
@@ -114,12 +160,15 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
         if (!file) return;
         setLogoBusy(true);
         try {
-            const path = `${planId}/${Date.now()}_${file.name.replace(/[^A-Za-z0-9._-]/g, "_")}`;
-            const { error } = await supabase.storage.from("iif-logos").upload(path, file, { cacheControl: "3600", upsert: false });
-            if (error) throw error;
-            const { data } = supabase.storage.from("iif-logos").getPublicUrl(path);
-            setInput(1, "logo_url", data.publicUrl);
-            await authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "logo_url", value: data.publicUrl }) });
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await authedFetch(`/uploads/logo?plan_id=${encodeURIComponent(planId)}`, { method: "POST", body: fd });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j?.detail || `Upload failed (HTTP ${res.status})`);
+            }
+            const data = await res.json();
+            setInput(1, "logo_url", data.url);
             toast.success("Logo uploaded.");
         } catch (e) { toast.error(e.message || "Logo upload failed."); }
         finally { setLogoBusy(false); }
@@ -149,10 +198,12 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="editorial-card p-5">
                         <div className="flex items-center gap-2 mb-3"><ImgIcon className="h-4 w-4 text-brand-bronze" /><div className="font-serif text-lg">Upload existing</div></div>
-                        <input type="file" accept="image/*" onChange={(e) => uploadLogo(e.target.files?.[0])} className="text-sm" data-testid="logo-upload-input" />
+                        <input type="file" accept="image/*" disabled={logoBusy} onChange={(e) => uploadLogo(e.target.files?.[0])} className="text-sm" data-testid="logo-upload-input" />
+                        <p className="text-[11px] text-muted-foreground mt-2">PNG, JPG, WEBP, GIF, SVG · max 5 MB.</p>
+                        {logoBusy && <div className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</div>}
                         {getInput(1, "logo_url") && (
                             <div className="mt-4">
-                                <img src={getInput(1, "logo_url")} alt="logo" className="max-h-32 rounded-md" data-testid="logo-preview" />
+                                <img src={getInput(1, "logo_url")} alt="logo" className="max-h-32 rounded-md border bg-white p-2" data-testid="logo-preview" />
                             </div>
                         )}
                     </div>
@@ -169,26 +220,131 @@ function BusinessIdentity({ planId, plan, getInput, setInput }) {
                 </div>
             </Section>
 
-            <Section eyebrow="Structure" title="Pick the right business structure." helper="Get an AI recommendation based on your stage — then validate with your accountant.">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                    {BUSINESS_STRUCTURES.map((s) => (
-                        <Card key={s.key} className="p-4">
-                            <div className="font-serif text-base">{s.name}</div>
-                            <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{s.best}</p>
-                        </Card>
-                    ))}
+            <Section eyebrow="Structure" title="Pick your business structure." helper="Choose the structure that fits — or get an AI recommendation if you're unsure. A choice is required to proceed.">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                    {BUSINESS_STRUCTURES.map((s) => {
+                        const active = chosenStructure === s.key;
+                        return (
+                            <button
+                                key={s.key}
+                                type="button"
+                                onClick={() => pickStructure(s.key)}
+                                className={`text-left p-4 rounded-2xl border-2 transition-all ${active ? "border-brand-gold bg-brand-gold/10 shadow-md" : "border-border hover:border-brand-gold/60 bg-card"}`}
+                                data-testid={`structure-pick-${s.key}-button`}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="font-serif text-base">{s.name}</div>
+                                    {active && <Check className="h-4 w-4 text-brand-gold" />}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-snug">{s.best}</p>
+                            </button>
+                        );
+                    })}
                 </div>
-                <Button onClick={suggestStructure} disabled={structBusy} variant="outline" className="rounded-full" data-testid="suggest-structure-button">
-                    {structBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Recommend a structure for me</>}
-                </Button>
-                {getInput(1, "structure_recommendation") && (
-                    <div className="mt-5 editorial-card p-5 whitespace-pre-wrap text-sm leading-relaxed" data-testid="structure-output">{getInput(1, "structure_recommendation")}</div>
+                {!chosenStructure && (
+                    <p className="text-xs text-destructive mb-3" data-testid="structure-required-hint">Pick one of the four structures above to continue.</p>
                 )}
+                <div className="editorial-card p-5 bg-secondary/30">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                            <div className="label-eyebrow text-brand-bronze mb-1">Optional</div>
+                            <div className="font-serif text-lg">Not sure which fits? Get an AI recommendation.</div>
+                            <p className="text-xs text-muted-foreground mt-1">Skip this if you've already discussed it with your accountant or have a structure in mind.</p>
+                        </div>
+                        <Button onClick={suggestStructure} disabled={structBusy} variant="outline" className="rounded-full shrink-0" data-testid="suggest-structure-button">
+                            {structBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Recommend a structure</>}
+                        </Button>
+                    </div>
+                    {getInput(1, "structure_recommendation") && (
+                        <div className="mt-5 editorial-card p-5 whitespace-pre-wrap text-sm leading-relaxed" data-testid="structure-output">{getInput(1, "structure_recommendation")}</div>
+                    )}
+                </div>
             </Section>
         </>
     );
 }
 
+// =================== FINDING YOUR PURPOSE ===================
+function FindingPurpose({ planId, getInput, setInput }) {
+    // Q4 priorities ranking (sortable)
+    const stored = getInput(1, "fp_q4");
+    let priorities = FINDING_PURPOSE_PRIORITIES;
+    try {
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length === FINDING_PURPOSE_PRIORITIES.length) priorities = parsed;
+        }
+    } catch { /* keep default */ }
+
+    function updateRanking(next) {
+        setInput(1, "fp_q4", JSON.stringify(next));
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "fp_q4", value: JSON.stringify(next) }) });
+    }
+
+    return (
+        <Section eyebrow="Finding Your Purpose" title="Definiteness of purpose.">
+            <figure className="my-2">
+                <blockquote className="font-serif text-2xl md:text-3xl italic leading-snug text-foreground/90 pl-6 border-l-2 border-brand-gold" data-testid="napoleon-hill-quote">
+                    “Definiteness of purpose is the starting point of all achievement.”
+                </blockquote>
+                <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— Napoleon Hill</figcaption>
+            </figure>
+
+            <div className="mt-5 mb-7">
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="rounded-full" data-testid="learn-more-purpose-button">
+                            <BookOpen className="h-4 w-4 mr-2" /> Learn more
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" data-testid="learn-more-dialog">
+                        <DialogHeader>
+                            <div className="label-eyebrow text-brand-bronze mb-1">Napoleon Hill</div>
+                            <DialogTitle className="font-serif text-3xl tracking-[-0.02em]">{NAPOLEON_HILL_LEARN_MORE.title}</DialogTitle>
+                            <DialogDescription className="text-sm leading-relaxed pt-2">
+                                {NAPOLEON_HILL_LEARN_MORE.intro}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="gold-divider my-2" />
+                        <ol className="space-y-4">
+                            {NAPOLEON_HILL_LEARN_MORE.points.map((p, i) => (
+                                <li key={i} className="flex gap-3">
+                                    <span className="h-7 w-7 shrink-0 rounded-full bg-brand-gold/15 text-brand-bronze grid place-items-center text-sm font-semibold font-serif">{i + 1}</span>
+                                    <div>
+                                        <div className="font-serif text-lg">{p.title}</div>
+                                        <p className="text-sm text-muted-foreground leading-relaxed mt-0.5">{p.body}</p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            <div className="space-y-7">
+                {FINDING_PURPOSE_QUESTIONS.map((fq, i) => (
+                    <div key={fq.key}>
+                        <div className="label-eyebrow mb-1.5">Q{i + 1}</div>
+                        <div className="font-serif text-lg mb-2">{fq.q}</div>
+                        {fq.helper && <p className="text-xs text-muted-foreground mb-2">{fq.helper}</p>}
+                        {fq.key === "fp_q4" ? (
+                            <div className="editorial-card p-4">
+                                <p className="text-xs text-muted-foreground mb-3">Drag to reorder these life priorities. 1 = highest priority.</p>
+                                <SortableRanking items={priorities} onChange={updateRanking} testIdPrefix="fp-priorities" />
+                            </div>
+                        ) : (
+                            <AIAssistInput planId={planId} stepNum={1} fieldKey={fq.key} fieldLabel={fq.q} subModule="Finding Your Purpose"
+                                rows={3}
+                                value={getInput(1, fq.key)} onChange={(v) => setInput(1, fq.key, v)} />
+                        )}
+                    </div>
+                ))}
+            </div>
+        </Section>
+    );
+}
+
+// =================== DRIVEN ===================
 function DrivenSection({ planId, getInput, setInput }) {
     return (
         <Section eyebrow="Driven, not Drifter" title="Five questions to wake up your direction." helper="Answer each. Use AI to help when the page feels blank.">
@@ -206,6 +362,7 @@ function DrivenSection({ planId, getInput, setInput }) {
     );
 }
 
+// =================== MTP ===================
 function MTPSection({ planId, getInput, setInput }) {
     const [active, setActive] = useState(MTP_CATEGORIES[0].key);
     const [synthBusy, setSynthBusy] = useState(false);
@@ -213,7 +370,6 @@ function MTPSection({ planId, getInput, setInput }) {
     async function synthesizeMTP() {
         setSynthBusy(true);
         try {
-            // Collect all answers
             const all = MTP_CATEGORIES.flatMap((cat) => cat.questions.map((q, i) => ({ cat: cat.label, q, a: getInput(1, `mtp_${cat.key}_${i + 1}`) })));
             const ctx = all.filter((x) => x.a).map((x) => `[${x.cat}] ${x.q}\n=> ${x.a}`).join("\n\n");
             await streamingGenerate({
@@ -228,7 +384,7 @@ function MTPSection({ planId, getInput, setInput }) {
     }
 
     return (
-        <Section eyebrow="MTP Discovery" title="Massive Transformative Purpose." helper="Five categories, 50 reflections. Don't answer all at once — answer the ones that pull you. Then synthesize.">
+        <Section eyebrow="MTP Discovery" title="Massive Transformative Purpose." helper="Five categories, 50 reflections. Answer the ones that pull you. Then synthesize.">
             <div className="flex flex-wrap gap-2 mb-5">
                 {MTP_CATEGORIES.map((c) => (
                     <button key={c.key} onClick={() => setActive(c.key)}
@@ -273,6 +429,7 @@ function MTPSection({ planId, getInput, setInput }) {
     );
 }
 
+// =================== DEEP WHY ===================
 function DeepWhySection({ planId, getInput, setInput }) {
     const levels = [1, 2, 3, 4, 5, 6, 7];
     return (
@@ -306,6 +463,7 @@ function DeepWhySection({ planId, getInput, setInput }) {
     );
 }
 
+// =================== CHIEF AIM ===================
 function ChiefAimSection({ planId, getInput, setInput }) {
     return (
         <Section eyebrow="Definite Chief Aim" title="Your aim, in writing." helper="Answer the four prompts for each horizon: 1 year, 3 years, 5 years.">
@@ -332,18 +490,25 @@ function ChiefAimSection({ planId, getInput, setInput }) {
     );
 }
 
-function OutputCard({ planId, plan, getInput, setInput, markStepStatus, gotoStep }) {
+// =================== OUTPUT ===================
+function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const data = {
         name: getInput(1, "business_name"),
         logo: getInput(1, "logo_url"),
+        purpose: getInput(1, "fp_q5"),
         mtp: getInput(1, "mtp_statement"),
         why: getInput(1, "deep_why"),
         aim_y1_what: getInput(1, "chief_y1_what"),
-        structure: getInput(1, "structure_recommendation")
+        structure_chosen: getInput(1, "structure_chosen"),
+        structure_rec: getInput(1, "structure_recommendation")
     };
 
     const [marking, setMarking] = useState(false);
     async function complete() {
+        if (!data.structure_chosen) {
+            toast.error("Please pick a business structure on the Identity tab to continue.");
+            return;
+        }
         setMarking(true);
         try {
             await markStepStatus(1, "complete");
@@ -353,6 +518,8 @@ function OutputCard({ planId, plan, getInput, setInput, markStepStatus, gotoStep
         } finally { setMarking(false); }
     }
 
+    const structName = BUSINESS_STRUCTURES.find((b) => b.key === data.structure_chosen)?.name || null;
+
     return (
         <Section eyebrow="Your Output" title="Your Step 1 plan card." helper="Edit anything by jumping back to the relevant tab. This is your living source-of-truth.">
             <div className="editorial-card p-7 md:p-8" data-testid="step1-output-card">
@@ -361,17 +528,22 @@ function OutputCard({ planId, plan, getInput, setInput, markStepStatus, gotoStep
                         <div className="label-eyebrow text-brand-bronze">Business</div>
                         <div className="font-serif text-3xl mt-1">{data.name || "—"}</div>
                     </div>
-                    {data.logo && <img src={data.logo} alt="logo" className="h-20 w-20 object-contain rounded" />}
+                    {data.logo && <img src={data.logo} alt="logo" className="h-20 w-20 object-contain rounded bg-white p-1.5" />}
                 </div>
                 <div className="gold-divider my-6" />
+                <Field label="Purpose" value={data.purpose} multiline />
                 <Field label="Massive Transformative Purpose" value={data.mtp} />
                 <Field label="Deep WHY" value={data.why} />
                 <Field label="1-Year Chief Aim (WHAT)" value={data.aim_y1_what} />
-                <Field label="Recommended Structure" value={data.structure} multiline />
+                <Field label="Business Structure" value={structName} />
+                {data.structure_rec && <Field label="AI Recommendation Notes" value={data.structure_rec} multiline />}
             </div>
-            <div className="mt-6 flex justify-end">
-                <Button onClick={complete} disabled={marking} className="cta-red rounded-full h-11 px-6" data-testid="complete-step1-button">
-                    {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-2" /> Complete Step 1 → Begin Step 2</>}
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                {!data.structure_chosen && (
+                    <p className="text-xs text-destructive sm:mr-auto" data-testid="step1-missing-structure-warn">A business structure must be picked on the Identity tab before completing Step 1.</p>
+                )}
+                <Button onClick={complete} disabled={marking || !data.structure_chosen} className="cta-red rounded-full h-11 px-6" data-testid="complete-step1-button">
+                    {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-2" /> Complete Step 1 → Begin Step 2 <ArrowRight className="h-4 w-4 ml-2" /></>}
                 </Button>
             </div>
         </Section>
@@ -387,15 +559,13 @@ function Field({ label, value, multiline }) {
     );
 }
 
-// Helper: streaming generate using same SSE pattern as AIAssistInput
+// Helper: streaming generate
 async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText }) {
     try {
         const url = `/ai/${mode === "synthesize" ? "synthesize" : "generate"}`;
         const res = await authedFetch(url, {
             method: "POST",
-            body: JSON.stringify({
-                plan_id: planId, step_num: stepNum, field_key, field_label, instructions, extra_context
-            })
+            body: JSON.stringify({ plan_id: planId, step_num: stepNum, field_key, field_label, instructions, extra_context })
         });
         if (!res.ok) {
             const j = await res.json().catch(() => ({}));
@@ -417,7 +587,7 @@ async function streamingGenerate({ field_key, field_label, instructions, planId,
                     else if (ln.startsWith("data:")) dataStr += ln.slice(5).trim();
                 }
                 if (!dataStr) continue;
-                let payload = {}; try { payload = JSON.parse(dataStr); } catch {}
+                let payload = {}; try { payload = JSON.parse(dataStr); } catch { /* ignore */ }
                 if (event === "chunk" && payload.text) { acc += payload.text; onText && onText(acc); }
                 else if (event === "done") { acc = payload.text || acc; onText && onText(acc); }
                 else if (event === "error") { throw new Error(payload.error || "Generation error"); }

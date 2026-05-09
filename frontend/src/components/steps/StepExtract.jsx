@@ -2,19 +2,33 @@ import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Sparkles, Loader2, Check, Target, Users, Compass, Layers, IdCard, Download } from "lucide-react";
+import { Sparkles, Loader2, Check, Target, Users, Compass, Layers, IdCard, Download, ArrowLeft, ArrowRight, ChevronRight } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
 import { authedFetch } from "@/lib/supabase";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { MASLOW_LEVELS, SIX_NEEDS, NICHE_OPTIONS, NICHE_QUESTIONS, DEMOGRAPHICS_QUESTIONS, PSYCHOGRAPHICS_QUESTIONS } from "@/lib/framework";
+import { SIX_NEEDS, NICHE_OPTIONS, NICHE_QUESTIONS, DEMOGRAPHICS_QUESTIONS, PSYCHOGRAPHICS_QUESTIONS } from "@/lib/framework";
 import { STEPS } from "@/lib/steps";
 import { toPng } from "html-to-image";
+import { MaslowImagePyramid } from "./MaslowImagePyramid";
+
+const TAB_ORDER = ["maslow", "needs", "niche", "demo", "psycho", "card"];
+const TAB_LABELS = {
+    maslow: "Maslow",
+    needs: "6 Needs",
+    niche: "Niche (WHAT)",
+    demo: "Demographics (WHO)",
+    psycho: "Psychographics (WHERE)",
+    card: "Dream Customer Card"
+};
 
 export default function StepExtract({ plan, getInput, setInput, markStepStatus, gotoStep }) {
     const [tab, setTab] = useState("maslow");
     const planId = plan.id;
+    const goToTab = (k) => { setTab(k); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    const idx = TAB_ORDER.indexOf(tab);
+    const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
+    const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
 
     return (
         <div data-testid="step-extract">
@@ -45,8 +59,23 @@ export default function StepExtract({ plan, getInput, setInput, markStepStatus, 
                 <TabsContent value="niche"><NicheSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="demo"><DemoSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="psycho"><PsychoSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
-                <TabsContent value="card"><DreamCard planId={planId} plan={plan} getInput={getInput} setInput={setInput} markStepStatus={markStepStatus} gotoStep={gotoStep} setTab={setTab} /></TabsContent>
+                <TabsContent value="card"><DreamCard planId={planId} getInput={getInput} setInput={setInput} markStepStatus={markStepStatus} gotoStep={gotoStep} /></TabsContent>
             </Tabs>
+
+            {tab !== "card" && (
+                <div className="mt-12 flex items-center justify-between border-t pt-6" data-testid="extract-section-nav">
+                    {prevTab ? (
+                        <Button variant="ghost" onClick={() => goToTab(prevTab)} data-testid="extract-prev-button">
+                            <ArrowLeft className="h-4 w-4 mr-2" /> {TAB_LABELS[prevTab]}
+                        </Button>
+                    ) : <span />}
+                    {nextTab && (
+                        <Button onClick={() => goToTab(nextTab)} className="cta-red rounded-full h-11 px-5" data-testid="extract-next-button">
+                            Next: {TAB_LABELS[nextTab]} <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -64,32 +93,15 @@ function Section({ title, helper, eyebrow, children }) {
 }
 
 function MaslowSection({ planId, getInput, setInput }) {
-    const selected = (getInput(1, "_unused"), parseList(getInput(2, "maslow_levels")));
+    const selected = parseList(getInput(2, "maslow_levels"));
     function toggle(key) {
         const next = selected.includes(key) ? selected.filter((x) => x !== key) : [...selected, key];
         setInput(2, "maslow_levels", JSON.stringify(next));
         authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 2, field_key: "maslow_levels", value: JSON.stringify(next) }) });
     }
     return (
-        <Section eyebrow="Maslow’s Hierarchy" title="Where does your customer live on the pyramid?" helper="Click any tier(s) that capture the level of need your work serves.">
-            <div className="flex flex-col items-center gap-2 my-6">
-                {MASLOW_LEVELS.slice().reverse().map((lv, idx) => {
-                    const reversedIdx = MASLOW_LEVELS.length - 1 - idx;
-                    const width = 60 + reversedIdx * 12;
-                    const active = selected.includes(lv.key);
-                    return (
-                        <button key={lv.key} onClick={() => toggle(lv.key)}
-                            className={`relative px-6 py-3 rounded-md transition-all border-2 ${active ? "border-brand-gold bg-brand-gold/10 shadow-md" : "border-brand-bronze/40 bg-card hover:border-brand-gold/60"}`}
-                            style={{ width: `${width}%`, maxWidth: 760 }}
-                            data-testid={`maslow-tier-${lv.key}-button`}>
-                            <div className="font-serif text-base md:text-lg">{lv.label}</div>
-                            <div className="text-xs text-muted-foreground">{lv.helper}</div>
-                            {active && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-gold" />}
-                        </button>
-                    );
-                })}
-            </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">Selected: {selected.length === 0 ? "none" : selected.map((k) => MASLOW_LEVELS.find((m) => m.key === k)?.label).join(", ")}</p>
+        <Section eyebrow="Maslow’s Hierarchy" title="Where does your customer live on the pyramid?" helper="Click any tier on the pyramid to mark which level(s) of need your work serves. Selecting more than one is normal — most powerful work touches several at once.">
+            <MaslowImagePyramid selected={selected} onToggle={toggle} />
         </Section>
     );
 }
@@ -224,7 +236,7 @@ function PsychoSection({ planId, getInput, setInput }) {
     );
 }
 
-function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep, setTab }) {
+function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep }) {
     const cardRef = useRef(null);
     const [downloading, setDownloading] = useState(false);
     const [marking, setMarking] = useState(false);

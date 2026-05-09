@@ -35,11 +35,13 @@ from routers.auth import router as auth_router  # noqa: E402
 from routers.profile import router as profile_router  # noqa: E402
 from routers.plans import router as plans_router  # noqa: E402
 from routers.ai import router as ai_router  # noqa: E402
+from routers.uploads import router as uploads_router  # noqa: E402
 
 api_router.include_router(auth_router)
 api_router.include_router(profile_router)
 api_router.include_router(plans_router)
 api_router.include_router(ai_router)
+api_router.include_router(uploads_router)
 
 app.include_router(api_router)
 

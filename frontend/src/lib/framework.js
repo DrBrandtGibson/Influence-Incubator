@@ -2,6 +2,31 @@
 // Strings here are the source of truth for the framework content.
 
 // ============ STEP 1 — DEFINE Your Purpose ============
+
+// New section between Identity and Driven, not Drifter
+export const FINDING_PURPOSE_QUESTIONS = [
+    { key: "fp_q1", q: "Why did you start this business?" },
+    { key: "fp_q2", q: "What difference do you hope to make in the world through your business?" },
+    { key: "fp_q3", q: "Who has influenced you the most in starting this business, and why?" },
+    { key: "fp_q4", q: "Please rank in order these priorities in your life:", helper: "Drag to reorder. 1 = highest priority." },
+    { key: "fp_q5", q: "What would you describe as your purpose?" }
+];
+
+export const FINDING_PURPOSE_PRIORITIES = ["God", "Family", "Friends", "Work", "Community"];
+
+export const NAPOLEON_HILL_LEARN_MORE = {
+    title: "Finding Your Purpose",
+    intro: "Napoleon Hill presented the concept years ago as Definiteness of Purpose — having a clear, unwavering vision of what one wants to achieve, coupled with a deep, intense desire and a persistent effort to realize that vision. This usually includes what you are willing to \u201cgive\u201d to accomplish this goal.",
+    points: [
+        { title: "Clarity of Goal", body: "It requires having a specific and clearly defined objective. This clarity is crucial because it directs all your efforts and decisions towards achieving that particular goal." },
+        { title: "Persistence and Commitment", body: "Hill emphasizes the importance of persistent and continuous effort towards your goal. This unwavering commitment is essential for overcoming obstacles and achieving success." },
+        { title: "Burning Desire", body: "He talks about having a \u201cburning desire\u201d for its achievement. This intense desire acts as a powerful motivational force that propels you towards your goal." },
+        { title: "Action-Oriented Approach", body: "Hill argues that simply having a purpose is not enough; it must be accompanied by continuous action. A definitive plan, coupled with continuous action toward that plan, is essential." },
+        { title: "Influence on Subconscious Mind", body: "Hill believes that a definiteness of purpose, combined with a burning desire, impresses one\u2019s objectives upon the subconscious mind, thereby setting in motion the forces that eventually lead to material realization." },
+        { title: "Positive Influence on Others", body: "A clear purpose can also positively affect one\u2019s ability to influence and lead others. It attracts the cooperation of other people who are attuned to the same goal." }
+    ]
+};
+
 export const DRIVEN_QUESTIONS = [
     "Are you a person who has a clear destination in mind, or do you let life happen to you?",
     "What does it mean to you to live a life with intention and purpose?",

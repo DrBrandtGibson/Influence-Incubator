@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { StepNavigator } from "@/components/plans/StepNavigator";
 import { LockedStepPreview } from "@/components/locked/LockedStepPreview";
 import { STEPS } from "@/lib/steps";
-import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft } from "lucide-react";
+import { Loader2, ChevronsLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -88,8 +88,6 @@ export default function PlanWorkspace() {
     function gotoStep(s) { navigate(`/plans/${planId}/${s.key}`); }
 
     const stepIdx = STEPS.findIndex((s) => s.key === currentStep.key);
-    const prevStep = STEPS[stepIdx - 1];
-    const nextStep = STEPS[stepIdx + 1];
 
     return (
         <div className="flex" data-testid="plan-workspace">
@@ -133,18 +131,6 @@ export default function PlanWorkspace() {
                             markStepStatus={markStepStatus}
                             gotoStep={gotoStep}
                         />
-                    )}
-
-                    {/* Step nav buttons */}
-                    {!locked && (
-                        <div className="mt-12 flex items-center justify-between border-t pt-6">
-                            {prevStep ? (
-                                <Button variant="ghost" onClick={() => gotoStep(prevStep)} data-testid="workspace-prev-step"><ChevronLeft className="h-4 w-4 mr-1" /> Step {prevStep.num} · {prevStep.short}</Button>
-                            ) : <span />}
-                            {nextStep && (
-                                <Button onClick={() => gotoStep(nextStep)} className="cta-red rounded-full" data-testid="workspace-next-step">Step {nextStep.num} · {nextStep.short} <ChevronRight className="h-4 w-4 ml-1" /></Button>
-                            )}
-                        </div>
                     )}
                 </div>
             </div>
