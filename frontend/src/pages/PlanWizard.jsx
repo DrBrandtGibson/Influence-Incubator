@@ -49,6 +49,13 @@ export default function PlanWizard() {
         if (!data.idea.trim()) { toast.error("Please describe your idea."); setStep(0); return; }
         setSubmitting(true);
         try {
+            // Ensure session is valid right before submit
+            const { data: sessionData } = await import("@/lib/supabase").then(m => m.supabase.auth.getSession());
+            if (!sessionData?.session?.access_token) {
+                toast.error("Your session expired. Please sign in again.");
+                navigate("/login", { replace: true, state: { from: "/plans/new" } });
+                return;
+            }
             const res = await authedFetch("/plans", {
                 method: "POST",
                 body: JSON.stringify({
@@ -61,12 +68,13 @@ export default function PlanWizard() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                if (res.status === 402 || err?.code === "plan_limit_reached") {
+                const code = err?.detail?.code || err?.code;
+                if (res.status === 402 || code === "plan_limit_reached") {
                     toast.error("Free plan limit reached.", { description: "Upgrade to Pro for unlimited plans." });
                     navigate("/pricing");
                     return;
                 }
-                throw new Error(err?.detail || "Could not create plan.");
+                throw new Error(err?.detail?.message || err?.detail || "Could not create plan.");
             }
             const plan = await res.json();
             toast.success("Plan created.");

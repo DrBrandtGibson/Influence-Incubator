@@ -1,197 +1,216 @@
-# plan.md — The Influence Incubator Formula
+# plan.md — The Influence Incubator Formula (Updated)
 
 ## 1. Objectives
-- Prove core integrations: **Supabase (Auth/DB/RLS/Storage)** + **FastAPI SSE** + **Claude Sonnet 4.5 streaming**.
-- Ship V1 (Phases 1–4): landing + auth + dashboard + plan wizard + step navigator (locks) + **Step 1–2 fully functional free tier** with universal AI Assist.
-- Establish foundations for pro gating, exports, and later Stripe (deferred).
+- **Primary (now achieved for V1 free tier):** Prove core integrations end-to-end: **Supabase (Auth/DB/RLS/Storage)** + **FastAPI** + **Claude Sonnet 4.5** with **SSE-style streaming** and context-aware generation.
+- **Ship V1 (Phases 1–4) as a polished free-tier product:** Landing + Auth + Dashboard + Plan Wizard + Plan Workspace + Step Navigator (locks) + **Steps 1–2 fully functional** with **Universal AI Assist on every field**.
+- **Set up foundations for Pro:** Locked previews for Steps 3–7, subscription flag in `profiles`, exports and Stripe later.
+- **Current objective (next):** **Pause for review** (user-requested checkpoint after Phases 1–4), then proceed to **Steps 3–7**, then **Exports**, then **Stripe**.
 
 ## 2. Implementation Steps
 
-### Phase 0 — Core POC (Isolation; do not proceed until stable)
-**Core workflow to prove:** React ↔ Supabase Auth session/JWT ↔ FastAPI verifies user ↔ FastAPI streams Claude SSE ↔ writes/reads plan context from Supabase with RLS.
+### Phase 0 — Core POC (Isolation; do not proceed until stable) ✅ COMPLETE
+**Core workflow proven:** React (CRA) ↔ Supabase Auth session/JWT ↔ FastAPI verifies user ↔ FastAPI streams Claude output (chunked SSE) ↔ Supabase Postgres with RLS.
 
-1) Websearch quick playbook
-- Confirm best practices for: Supabase JWT verification in FastAPI, Supabase RLS patterns (user_id), SSE streaming in FastAPI + fetch/EventSource in React.
+**Delivered / Verified:**
+- Supabase admin connectivity, storage bucket creation, upload test.
+- Two-user RLS isolation confirmed (Alice vs Bob cannot read/insert as each other).
+- Claude Sonnet 4.5 generation verified via Emergent universal LLM key; streaming UX implemented by chunking.
+- Full Supabase schema created and applied via SQL Editor.
 
-2) Minimal Python POC scripts (run locally in backend env)
-- `poc_supabase_admin.py`: connect via service role; create/read a test table row; confirm storage bucket create/upload/list.
-- `poc_supabase_rls.sql`: create tiny `plans` table + RLS; test `select/insert` as anon/authenticated (use JWT) to ensure isolation works.
-- `poc_claude_stream.py`: call Emergent LLM (Claude Sonnet 4.5) and stream tokens; assert chunked output.
-
-3) Minimal FastAPI POC endpoints
-- `GET /api/health`.
-- `POST /api/poc/ai-stream` (SSE): returns streamed tokens from Claude.
-- `GET /api/poc/me` verifies Supabase JWT (Authorization: Bearer) and returns user id/email.
-
-4) Minimal React POC page
-- Login via Supabase email/password; call `/api/poc/me`; call `/api/poc/ai-stream` and render live stream.
-
-**Phase 0 user stories (test each):**
-1. As a user, I can sign up with email/password and receive a verification email.
-2. As a user, I can log in and maintain a session in the browser.
-3. As a logged-in user, I can call a protected backend endpoint and see my user id.
-4. As a user, I can click “Test AI Stream” and watch tokens appear live.
-5. As a user, my test plan row is only visible to me (RLS verified).
-
-**Exit criteria:** streaming works reliably; JWT verification works; RLS blocks cross-user reads/writes.
+**Exit criteria:** met.
 
 ---
 
-### Phase 1 — Foundation + Brand UI + Auth + Landing (V1 shell)
-1) Frontend foundation (React/Vite)
-- Brand tokens (colors, typography EB Garamond/Inter), light/dark themes.
-- Layout: top nav + footer; app shell scaffolding.
-
-2) Landing page (/)
-- Cinematic hero, diagonal dividers, 7-step preview cards with FREE/PRO badges, CTA “Start Your Plan — Free”, attribution.
-
-3) Auth routes
-- `/signup`, `/login`, `/forgot-password` using Supabase Auth.
+### Phase 1 — Foundation + Brand UI + Auth + Landing ✅ COMPLETE
+**Delivered:**
+- Brand tokens + polished **light/dark** themes using shadcn `hsl(var(--...))` variables.
+- Typography: **EB Garamond** (headings) + **Inter** (body).
+- Marketing shell: top nav + footer.
+- Landing page (`/`): cinematic hero “Marketing Your Extraordinary…”, 7-step preview cards (FREE/PRO badges), testimonials, FAQ, pricing teaser, diagonal section transitions.
+- Auth pages: `/login`, `/signup`, `/forgot-password`, `/reset-password`.
 - Route guards for `/dashboard` and `/plans/*`.
 
-4) Backend
-- Keep only: auth verification helper + health endpoint; no business logic yet.
-
-**Phase 1 user stories:**
-1. As a visitor, I can understand the 7-step framework and what’s free vs pro from the landing page.
-2. As a user, I can sign up, verify my email, and log in.
-3. As a user, I can request a password reset email and set a new password.
-4. As a user, I’m redirected away from protected pages when logged out.
-5. As a user, I can log out and my session is cleared.
-
-End of phase: run 1 E2E smoke (Playwright): landing → signup/login → dashboard protected.
+**Important update (implementation detail):**
+- Added **backend-assisted signup** (`POST /api/auth/signup`) using Supabase service role to **auto-confirm email** so signup works reliably inside preview/iframe environments.
 
 ---
 
-### Phase 2 — Supabase Schema + RLS + Wizard + Navigator + Universal AI Assist
-1) Supabase DB (SQL migrations)
-- Tables (minimum for Phases 1–4): `profiles`, `plans`, `plan_steps`, `plan_inputs`, `ai_runs`.
-- RLS: user can only access own rows; helper views if needed.
+### Phase 2 — Supabase Schema + RLS + Wizard + Navigator + Universal AI Assist ✅ COMPLETE
+**Delivered:**
+1) **Supabase schema + RLS**
+- Applied full schema (idempotent) supporting all phases:
+  - `profiles`, `plans`, `plan_steps`, `plan_inputs`, `ai_runs`, plus step-specific tables (dream_customers, hero journey stages, story bank entries, etc.) and `stripe_events` (Phase 11).
+- RLS policies enforce per-user isolation across tables.
+- Trigger creates `profiles` row on new auth user.
 
-2) Dashboard (/dashboard)
-- List plans; create plan CTA.
-- Enforce free=1 plan limit (server-verified + UI messaging).
+2) **Dashboard (`/dashboard`)**
+- Lists user plans and CTA to create new plan.
+- **Free-tier 1-plan limit** enforced server-side (402) with UI messaging.
 
-3) Plan creation wizard (/plans/new)
-- Capture: idea, optional name, founder backstory, industry, stage.
-- Create plan + initialize step records.
+3) **Plan wizard (`/plans/new`)**
+- 5-slide wizard: idea, title, backstory, industry, stage.
+- Robust session check before submit.
 
-4) Workspace + Navigator
-- `/plans/:id/:step` route.
-- Left sidebar 7 steps + lock icons for steps 3–7 when free.
-- Locked click opens upgrade modal; unlocked allows jump.
+4) **Plan workspace (`/plans/:id/:stepKey`)**
+- Persistent left **StepNavigator** with:
+  - FREE badges (Steps 1–2)
+  - PRO + **gold lock icons** (Steps 3–7)
+  - Locked-step click opens Upgrade dialog.
 
-5) Universal `<AIAssistInput>`
-- Wrap inputs; floating toolbar buttons: Answer, Expand, Refine.
-- Sends full plan context (wizard + prior step answers) to backend.
+5) **Universal `<AIAssistInput>` (every question field)**
+- Floating toolbar: **Answer / Expand / Refine**.
+- Streams output from backend SSE endpoints.
+- Auto-saves on blur to `plan_inputs`.
 
-6) AI endpoints (FastAPI, all under `/api/ai/*`, SSE where needed)
+6) **AI endpoints (FastAPI)**
 - `/api/ai/answer-question` (SSE)
 - `/api/ai/expand-answer` (SSE)
-- `/api/ai/refine` (SSE, with short chat turns)
-- Persist `ai_runs` + associate with field.
-
-**Phase 2 user stories:**
-1. As a free user, I can create my first plan but I’m blocked from creating a second.
-2. As a user, I can open a plan workspace and see the 7-step navigator.
-3. As a free user, I see gold locks on steps 3–7 and a clear upgrade prompt when clicking.
-4. As a user, I can click “Answer for me” on any field and see a streamed answer.
-5. As a user, I can refine a draft (“shorter/more specific”) without losing my original text.
-
-End of phase: 1 E2E: signup → wizard → workspace → AI assist stream → lock behavior.
+- `/api/ai/refine` (SSE)
+- `/api/ai/generate` (SSE)
+- `/api/ai/synthesize` (SSE)
+- Persists `ai_runs`.
+- Enforces step gating: Steps 3–7 return 403 unless Pro.
 
 ---
 
-### Phase 3 — Step 1 DEFINE (Free, complete)
-Implement Step 1 screens + persistence to `plan_inputs` with structured keys.
-- Business Identity: name gen (5 + rationale), logo upload to Supabase Storage + prompt generator, structure recommendation.
-- Driven Not Drifter: 5 verbatim questions.
-- MTP Discovery: all question sets + AI synthesis to 8–10 word MTP.
-- 7 Levels Deep WHY: interactive cascade.
-- Definite Chief Aim: 1yr/3yr/5yr prompts.
-- Output card: editable + regenerate sections.
+### Phase 3 — Step 1 DEFINE (Free, complete) ✅ COMPLETE
+**Delivered Step 1 (6 tabs):**
+1) **Identity**
+- Business name input + “Generate 5 name options” (AI)
+- Logo upload to **Supabase Storage** + “Generate 5 logo prompts” (AI)
+- Business structure recommendation (AI)
 
-**Phase 3 user stories:**
-1. As a user, I can answer all Step 1 questions and my progress is saved automatically.
-2. As a user, I can generate 5 business names with reasons and pick one.
-3. As a user, I can upload a logo and see it stored/retrieved from Supabase Storage.
-4. As a user, I can run the MTP synthesis and get a concise MTP line.
-5. As a user, I can view a single Step 1 output card and edit any section.
+2) **Driven, not Drifter**
+- 5 verbatim questions with AI assist.
 
-End of phase: 1 E2E: complete Step 1 with AI assist + refresh persistence.
+3) **MTP Discovery**
+- 5 categories × 10 verbatim questions each (50 total).
+- “Synthesize my MTP” → **8–10 word** MTP output (AI synthesize).
 
----
+4) **7 Levels Deep WHY**
+- Starter prompt + 7-level cascade + distilled one-sentence WHY.
 
-### Phase 4 — Step 2 EXTRACT (Free, complete) + Celebration + Soft Upgrade
-- Maslow interactive (clickable SVG) + selection stored.
-- Robbins 6-Needs wheel selection (3+ needs).
-- Niche selector (10 verbatim Qs) → AI micro-niche statement.
-- Demographics (11 Qs) + AI suggested values.
-- Psychographics (11 Qs) with heavy AI generation.
-- Dream Customer Trading Card: generate printable PNG.
-- End-of-step celebration screen + soft upgrade prompt.
+5) **Chief Aim**
+- 1-year / 3-year / 5-year horizons × 4 prompts (WHAT / GIVE / DATE / RESULTS).
 
-**Phase 4 user stories:**
-1. As a user, I can select Maslow level and see it reflected in my audience summary.
-2. As a user, I can pick 3+ Robbins needs and get an AI explanation of the fit.
-3. As a user, I can generate a micro-niche statement from my niche answers.
-4. As a user, I can generate a Dream Customer trading card image and download it.
-5. As a free user, after completing Step 2 I see a celebration screen and a non-blocking upgrade prompt.
-
-End of phase: 1 E2E: wizard → Step1 → Step2 → generate card → celebration; then **PAUSE for review**.
+6) **Your Output**
+- Output card: Business Name, Logo, MTP, Deep WHY, 1-Year Aim (WHAT), Structure recommendation.
+- “Complete Step 1” button marks `plan_steps.step_num=1` complete and advances.
 
 ---
 
-### Phase 5–9 — Steps 3–7 (Pro) + Locked Previews (Free)
-- For each step: build locked-preview page first (conversion-focused), then full pro implementation.
-- Add `hasProAccess()` hook (stubbed until Stripe) using a `profiles.plan_tier` flag set manually for testing.
-- Persist all step inputs to Supabase; reuse `<AIAssistInput>` everywhere.
+### Phase 4 — Step 2 EXTRACT (Free, complete) + Celebration + Soft Upgrade ✅ COMPLETE
+**Delivered Step 2 (6 tabs):**
+1) **Maslow**
+- Clickable pyramid-style UI; selections persisted.
 
-**Phase 5–9 user stories (minimum to validate):**
-1. As a free user, I can view a beautiful preview of Step 3–7 but cannot edit them.
-2. As a pro (test-flag) user, I can complete Step 3 and see outputs saved.
-3. As a pro user, I can complete Step 4 and generate the marketing plan sections.
-4. As a pro user, I can complete Step 5–7 and see a coherent end-to-end plan.
-5. As any user, the navigator accurately shows completed/incomplete status per step.
+2) **6 Needs**
+- Interactive SVG wheel + list toggles; persisted.
 
-End of each step: E2E for that step’s happy path.
+3) **Niche (WHAT)**
+- 4 niche cards selector.
+- 10 verbatim niche questions.
+- Micro-niche statement field.
+
+4) **Demographics (WHO)**
+- 11 verbatim questions with AI assist.
+
+5) **Psychographics (WHERE)**
+- 11 verbatim questions with AI assist.
+
+6) **Dream Customer Card**
+- Pokémon-style printable trading card layout.
+- PNG export via `html-to-image`.
+
+**Completion:**
+- “Complete Step 2” marks step complete and shows **Celebration screen** with upgrade CTA.
+
+**Pause point reached:** Phases 1–4 complete end-to-end; per user request, **pause for review** before building Steps 3–7.
 
 ---
 
-### Phase 10 — Polish + Exports + Testing Hardening
-- PDF export: free = Steps 1–2 watermarked; pro = full clean PDF.
-- Word export (docx): pro only.
-- Add onboarding tour, accessibility pass, rate limiting + AI output sanitization.
-- Tests: Vitest critical units + Playwright core flows.
+### Phase 5–9 — Steps 3–7 (Pro) + Locked Previews (Free) 🔜 NEXT
+**Current state:**
+- Free users see locked previews / upgrade dialogs for steps 3–7.
+- Pro experience is not yet implemented (coming next).
 
-**Phase 10 user stories:**
-1. As a free user, I can export a watermarked PDF containing only Steps 1–2.
-2. As a pro user, I can export a clean full PDF of all steps.
-3. As a pro user, I can export a Word document.
-4. As a user, I can resume where I left off with accurate saved progress.
-5. As a user, the UI works on desktop and remains usable on mobile.
+**Implementation approach (revised, realistic execution order):**
+For each step 3–7:
+1) Ensure **locked-preview** page is conversion-polished (already present via navigator locks; add per-step preview richness).
+2) Build the **full Pro step implementation** with persistence, AI assist on every field, and step output cards.
+3) Add step completion tracking + navigator status indicators.
+
+**Step 3 — FRAME Your Story (Pro):**
+- Brand Voice from prompts
+- Story Bank builder
+- Hero’s Journey 12-stage wheel × 2 journeys
+- Hook-Story-Offer generator
+
+**Step 4 — IGNITE Your Brand (Pro, largest):**
+- Brand personality/archetypes
+- Pocket Media Empire modules
+- Website hub generator
+- Two-track marketing plan
+- 30/60/90 + Beyond content calendar
+
+**Step 5 — NURTURE (Pro):**
+- Transformative framework + diagram
+- Continuity program design
+- SaaS opportunity generator
+- Community design
+
+**Step 6 — EXPAND (Pro):**
+- Dream 100 CRM
+- Live events / challenges
+- Book builder
+
+**Step 7 — DELIVER (Pro):**
+- SOP builder
+- Listening engine concepts
+- Engagement scorecard
+- Onboarding flow
+- Retention playbook
+
+**Pro access control:**
+- Continue using `profiles.subscription_status` (`free`, `pro_monthly`, `pro_lifetime`) + `pro_until`.
+- Until Stripe Phase 11, enable a temporary admin toggle for internal testing.
 
 ---
 
-### Phase 11 — Stripe Paywall (Deferred until Phase 10 done)
-- Pricing page, checkout sessions (lifetime + subscription), webhooks → update `profiles.plan_tier`.
-- Customer portal, refund policy page, idempotent `stripe_events`.
+### Phase 10 — Polish + Exports + Testing Hardening 🔜 UPCOMING
+- **PDF export**
+  - Free: Steps 1–2 only + watermark.
+  - Pro: full plan clean PDF.
+- **Word export** (docx): Pro only.
+- Add onboarding tour, accessibility pass (WCAG AA), rate limiting.
+- Increase test coverage (Playwright/Vitest) for critical flows.
 
-**Phase 11 user stories:**
-1. As a user, I can upgrade to Pro and immediately unlock Steps 3–7.
-2. As a user, I can manage/cancel my subscription in the billing portal.
-3. As a user, webhook processing is reliable (no double-processing).
-4. As a user, I can purchase lifetime access and retain Pro status.
-5. As a user, I can request a refund per the policy and lose access if refunded.
+---
+
+### Phase 11 — Stripe Paywall (Deferred until Phase 10 done) 🔜 UPCOMING
+- Pricing checkout for:
+  - Lifetime $97
+  - Monthly $19/mo
+- Webhooks (idempotent via `stripe_events`) update `profiles.subscription_status`.
+- Customer portal, refund policy page, guarantee messaging.
 
 ## 3. Next Actions (Immediate)
-1. Implement Phase 0 scripts + endpoints + single React POC page.
-2. Run POC tests until: Auth JWT verification + RLS + SSE streaming are stable.
-3. Only then start Phase 1 UI build.
+**We are at the user-requested checkpoint.**
+1) User review of Phases 1–4 in the live app:
+   - Landing + auth
+   - Dashboard + wizard
+   - Step 1 + Step 2 content + AI assist streaming
+   - Locked-step behavior + upgrade dialog
+2) Collect feedback on:
+   - wording / flow / UI polish
+   - which Pro step to prioritize first (Step 3 vs Step 4)
+3) After approval: begin Phase 5 (Step 3 FRAME) implementation.
 
 ## 4. Success Criteria
-- Phase 0: Supabase + Claude SSE streaming proven end-to-end with real tokens and enforced RLS.
-- Phase 1–4: Steps 1–2 are fully functional, persist reliably, and AI Assist works on every input.
-- Free gating: 1 plan max + locks on steps 3–7 behave correctly.
-- UX: landing/auth/dashboard/wizard/workspace flows are smooth and branded.
-- Regression safety: Playwright covers critical user flows; exports work in Phase 10.
+- ✅ Phase 0: Supabase + Claude streaming proven end-to-end with enforced RLS.
+- ✅ Phase 1–4: Steps 1–2 are fully functional, auto-save correctly, and AI Assist streams on every input.
+- ✅ Free gating: 1 plan max + locks on steps 3–7 + upgrade dialog.
+- ✅ UX: premium editorial brand feel; light/dark polished.
+- 🔜 Next: Steps 3–7 reach spec-level depth for Pro.
+- 🔜 Exports: watermarked free PDF + full Pro PDF/Word.
+- 🔜 Stripe: upgrades instantly unlock steps; billing portal and webhooks are reliable.
