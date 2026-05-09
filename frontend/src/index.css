@@ -94,6 +94,10 @@
         background: hsl(var(--brand-gold) / 0.35);
         color: hsl(var(--foreground));
     }
+    /* Hide any platform-injected Emergent badge per brand request */
+    #emergent-badge {
+        display: none !important;
+    }
 }
 
 @layer components {

@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
+import { LOGO_URL } from "@/lib/brand";
 
 export const TopNav = ({ variant = "marketing" }) => {
     const { isAuthenticated, user, profile, signOut, isPro } = useAuth();
@@ -30,8 +31,8 @@ export const TopNav = ({ variant = "marketing" }) => {
         >
             <div className="container-readable flex items-center justify-between h-16">
                 <Link to="/" className="flex items-center gap-2.5 group" data-testid="logo-home-link">
-                    <div className="h-8 w-8 rounded-md grid place-items-center bg-brand-gold text-brand-charcoal font-serif font-bold text-lg">II</div>
-                    <span className="font-serif text-lg font-semibold tracking-tight">
+                    <img src={LOGO_URL} alt="Influence Incubator" className="h-9 w-9 rounded-md object-contain bg-black" />
+                    <span className="font-serif text-lg font-semibold tracking-tight hidden sm:inline">
                         Influence <span className="text-brand-gold">Incubator</span>
                     </span>
                 </Link>

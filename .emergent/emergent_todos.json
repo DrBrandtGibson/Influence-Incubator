@@ -1,38 +1,22 @@
 [
   {
-    "content": "Phase 0: POC — Supabase Auth/RLS + Claude Sonnet 4.5 SSE streaming ✅",
+    "content": "Replace logo with new asset across TopNav, Footer, Auth pages ✅",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Foundation, brand UI, auth flows, landing page ✅",
+    "content": "Set favicon to new logo ✅",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Plan workspace + step navigator + Universal AI Assist component + AI endpoints ✅",
+    "content": "Remove 'Made with Emergent' badge ✅",
     "status": "completed"
   },
   {
-    "content": "Phase 3: Step 1 DEFINE — Identity, Driven, MTP, 7 Levels WHY, Chief Aim, Output card ✅",
+    "content": "Update copyright text in footer ✅",
     "status": "completed"
   },
   {
-    "content": "Phase 4: Step 2 EXTRACT — Maslow, 6 Needs, Niche, Demographics, Psychographics, Dream Customer Card, Celebration ✅",
+    "content": "Add legal disclaimer below copyright in footer (centered) ✅",
     "status": "completed"
-  },
-  {
-    "content": "End-to-end testing via testing_agent_v3 → PAUSE for user review",
-    "status": "in_progress"
-  },
-  {
-    "content": "Phases 5-9: Steps 3-7 (pro) with locked previews",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 10: Polish + PDF/Word exports + accessibility",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 11: Stripe paywall integration",
-    "status": "pending"
   }
 ]

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { LOGO_URL } from "@/lib/brand";
 
 export default function Login() {
     const { signIn } = useAuth();
@@ -61,7 +62,7 @@ export function AuthShell({ title, subtitle, children }) {
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2" data-testid="auth-shell">
             <div className="relative bg-brand-charcoal text-brand-cream hidden lg:flex flex-col p-10 overflow-hidden">
                 <Link to="/" className="flex items-center gap-2.5" data-testid="auth-logo-link">
-                    <div className="h-9 w-9 rounded-md grid place-items-center bg-brand-gold text-brand-charcoal font-serif font-bold">II</div>
+                    <img src={LOGO_URL} alt="Influence Incubator" className="h-10 w-10 rounded-md object-contain bg-black" />
                     <span className="font-serif text-lg">Influence Incubator</span>
                 </Link>
                 <div className="mt-auto">
@@ -74,7 +75,7 @@ export function AuthShell({ title, subtitle, children }) {
             <div className="flex items-center justify-center p-6 lg:p-12 bg-background">
                 <div className="w-full max-w-sm">
                     <div className="lg:hidden flex items-center gap-2.5 mb-10">
-                        <div className="h-8 w-8 rounded-md grid place-items-center bg-brand-gold text-brand-charcoal font-serif font-bold">II</div>
+                        <img src={LOGO_URL} alt="Influence Incubator" className="h-9 w-9 rounded-md object-contain bg-black" />
                         <span className="font-serif text-lg">Influence Incubator</span>
                     </div>
                     <h1 className="font-serif text-3xl md:text-4xl tracking-[-0.02em]" data-testid="auth-title">{title}</h1>
