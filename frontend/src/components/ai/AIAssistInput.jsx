@@ -151,7 +151,7 @@ export const AIAssistInput = ({
     }
 
     return (
-        <div className="relative" data-testid={testIdPrefix || `field-${stepNum}-${fieldKey}`}>
+        <div className="relative pt-9" data-testid={testIdPrefix || `field-${stepNum}-${fieldKey}`}>
             <Toolbar
                 busy={busy}
                 locked={locked}
@@ -222,7 +222,7 @@ export const AIAssistInput = ({
 
 function Toolbar({ busy, locked, onAnswer, onExpand, refineOpen, setRefineOpen, refineText, setRefineText, onRefine, onStop, tid }) {
     return (
-        <div className="absolute -top-3 right-3 z-10 flex items-center gap-1 rounded-full border bg-card shadow-sm px-1 py-1 text-xs">
+        <div className="absolute top-0 right-2 z-10 flex items-center gap-1 rounded-full border bg-card shadow-sm px-1 py-1 text-xs">
             <ToolButton disabled={locked || busy} onClick={onAnswer} data-testid={tid("answer-button")}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 <span>Answer</span>

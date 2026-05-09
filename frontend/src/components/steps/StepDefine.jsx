@@ -10,18 +10,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import {
     DRIVEN_QUESTIONS, MTP_CATEGORIES, SEVEN_LEVELS_DEEP,
     CHIEF_AIM_PROMPTS, CHIEF_AIM_HORIZONS, BUSINESS_STRUCTURES,
-    FINDING_PURPOSE_QUESTIONS, FINDING_PURPOSE_PRIORITIES, NAPOLEON_HILL_LEARN_MORE
+    FINDING_PURPOSE_QUESTIONS, FINDING_PURPOSE_PRIORITIES, NAPOLEON_HILL_LEARN_MORE,
+    BECOME_DRIVEN_QUOTE, BECOME_DRIVEN_LEARN_MORE,
+    MTP_CHURCHILL_QUOTE, MTP_LEARN_MORE, MTP_KEY_ASPECTS, MTP_EXAMPLES
 } from "@/lib/framework";
 import { STEPS } from "@/lib/steps";
 import { motion } from "framer-motion";
 import { SortableRanking } from "@/components/ui/SortableRanking";
-import { usePersistedField } from "@/lib/usePersistedField";
+import { InfoDialog } from "@/components/ui/InfoDialog";
+import { Dialog as RawDialog, DialogContent as RawDialogContent, DialogHeader as RawDialogHeader, DialogTitle as RawDialogTitle, DialogTrigger as RawDialogTrigger } from "@/components/ui/dialog";
 
 const TAB_ORDER = ["identity", "purpose", "driven", "mtp", "why", "chief", "output"];
 const TAB_LABELS = {
     identity: "Identity",
     purpose: "Finding Your Purpose",
-    driven: "Driven, not Drifter",
+    driven: "Become Driven",
     mtp: "MTP Discovery",
     why: "7 Levels Deep WHY",
     chief: "Chief Aim",
@@ -53,7 +56,7 @@ export default function StepDefine({ plan, getInput, setInput, markStepStatus, g
                     {[
                         ["identity", Building2, "Identity"],
                         ["purpose", BookOpen, "Finding Your Purpose"],
-                        ["driven", Compass, "Driven, not Drifter"],
+                        ["driven", Compass, "Become Driven"],
                         ["mtp", Sparkles, "MTP Discovery"],
                         ["why", Heart, "7 Levels Deep WHY"],
                         ["chief", Target, "Chief Aim"],
@@ -67,7 +70,7 @@ export default function StepDefine({ plan, getInput, setInput, markStepStatus, g
 
                 <TabsContent value="identity"><BusinessIdentity planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="purpose"><FindingPurpose planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
-                <TabsContent value="driven"><DrivenSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
+                <TabsContent value="driven"><BecomeDriven planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="mtp"><MTPSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="why"><DeepWhySection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
                 <TabsContent value="chief"><ChiefAimSection planId={planId} getInput={getInput} setInput={setInput} /></TabsContent>
@@ -266,7 +269,6 @@ function BusinessIdentity({ planId, getInput, setInput }) {
 
 // =================== FINDING YOUR PURPOSE ===================
 function FindingPurpose({ planId, getInput, setInput }) {
-    // Q4 priorities ranking (sortable)
     const stored = getInput(1, "fp_q4");
     let priorities = FINDING_PURPOSE_PRIORITIES;
     try {
@@ -281,6 +283,46 @@ function FindingPurpose({ planId, getInput, setInput }) {
         authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "fp_q4", value: JSON.stringify(next) }) });
     }
 
+    const [synthBusy, setSynthBusy] = useState(false);
+    const purpose = getInput(1, "purpose_statement");
+
+    async function synthesizePurpose() {
+        // Build context from the 5 questions
+        const answers = FINDING_PURPOSE_QUESTIONS.map((fq, i) => {
+            let val = getInput(1, fq.key);
+            if (fq.key === "fp_q4") {
+                try { const arr = JSON.parse(val); if (Array.isArray(arr)) val = arr.join(" > "); } catch { /* keep raw */ }
+            }
+            return val ? `Q${i + 1}: ${fq.q}\n=> ${val}` : null;
+        }).filter(Boolean).join("\n\n");
+
+        if (!answers) {
+            toast.error("Answer at least one of the questions before synthesizing.");
+            return;
+        }
+
+        setSynthBusy(true);
+        try {
+            await streamingGenerate({
+                field_key: "purpose_statement",
+                field_label: "Synthesized Purpose statement",
+                extra_context: { answers },
+                instructions:
+                    "From the user's answers, write a concise paragraph (4–6 sentences, ~80–120 words) describing the PURPOSE of their business. " +
+                    "The paragraph must clearly reflect each of these qualities (woven naturally, not labeled): " +
+                    "(1) Clarity of Goal — a specific, well-defined objective; " +
+                    "(2) Persistence and Commitment — unwavering effort; " +
+                    "(3) Burning Desire — intense motivational pull; " +
+                    "(4) Action-Oriented Approach — a clear plan combined with continuous action; " +
+                    "(5) Influence on Subconscious Mind — a vision impressed deeply enough to shape decisions; " +
+                    "(6) Positive Influence on Others — the ability to inspire and rally cooperation. " +
+                    "Write in the user's voice, calm and editorial. Return ONLY the paragraph, no headings or bullets.",
+                planId, stepNum: 1, mode: "synthesize",
+                onText: (t) => setInput(1, "purpose_statement", t)
+            });
+        } finally { setSynthBusy(false); }
+    }
+
     return (
         <Section eyebrow="Finding Your Purpose" title="Definiteness of purpose.">
             <figure className="my-2">
@@ -290,35 +332,15 @@ function FindingPurpose({ planId, getInput, setInput }) {
                 <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— Napoleon Hill</figcaption>
             </figure>
 
-            <div className="mt-5 mb-7">
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" className="rounded-full" data-testid="learn-more-purpose-button">
-                            <BookOpen className="h-4 w-4 mr-2" /> Learn more
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" data-testid="learn-more-dialog">
-                        <DialogHeader>
-                            <div className="label-eyebrow text-brand-bronze mb-1">Napoleon Hill</div>
-                            <DialogTitle className="font-serif text-3xl tracking-[-0.02em]">{NAPOLEON_HILL_LEARN_MORE.title}</DialogTitle>
-                            <DialogDescription className="text-sm leading-relaxed pt-2">
-                                {NAPOLEON_HILL_LEARN_MORE.intro}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="gold-divider my-2" />
-                        <ol className="space-y-4">
-                            {NAPOLEON_HILL_LEARN_MORE.points.map((p, i) => (
-                                <li key={i} className="flex gap-3">
-                                    <span className="h-7 w-7 shrink-0 rounded-full bg-brand-gold/15 text-brand-bronze grid place-items-center text-sm font-semibold font-serif">{i + 1}</span>
-                                    <div>
-                                        <div className="font-serif text-lg">{p.title}</div>
-                                        <p className="text-sm text-muted-foreground leading-relaxed mt-0.5">{p.body}</p>
-                                    </div>
-                                </li>
-                            ))}
-                        </ol>
-                    </DialogContent>
-                </Dialog>
+            <div className="mt-5 mb-7 flex flex-wrap gap-2">
+                <InfoDialog
+                    trigger={<Button variant="outline" className="rounded-full" data-testid="learn-more-purpose-button"><BookOpen className="h-4 w-4 mr-2" /> Learn more</Button>}
+                    eyebrow="Napoleon Hill"
+                    title={NAPOLEON_HILL_LEARN_MORE.title}
+                    intro={NAPOLEON_HILL_LEARN_MORE.intro}
+                    points={NAPOLEON_HILL_LEARN_MORE.points}
+                    testIdPrefix="learn-more-purpose"
+                />
             </div>
 
             <div className="space-y-7">
@@ -340,14 +362,54 @@ function FindingPurpose({ planId, getInput, setInput }) {
                     </div>
                 ))}
             </div>
+
+            {/* Synthesize Purpose */}
+            <div className="mt-10 dark-cinematic-panel p-7 md:p-8">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+                    <div>
+                        <div className="label-eyebrow text-brand-gold mb-1">Synthesize</div>
+                        <h3 className="font-serif text-2xl">Distill your answers into your Purpose.</h3>
+                        <p className="text-brand-cream/70 text-sm mt-1">A short paragraph that reflects clarity, commitment, desire, action, conviction, and influence on others.</p>
+                    </div>
+                    <Button onClick={synthesizePurpose} disabled={synthBusy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="synthesize-purpose-button">
+                        {synthBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Synthesize my Purpose</>}
+                    </Button>
+                </div>
+
+                {/* Editable / refinable purpose box */}
+                <div className="mt-6 border-t border-white/10 pt-5">
+                    <div className="label-eyebrow text-brand-gold mb-2">Your Purpose</div>
+                    <div className="rounded-xl bg-brand-cream text-brand-charcoal p-4 md:p-5">
+                        <AIAssistInput planId={planId} stepNum={1} fieldKey="purpose_statement"
+                            fieldLabel="Your business Purpose paragraph"
+                            subModule="Finding Your Purpose"
+                            rows={5}
+                            placeholder="Click ‘Synthesize my Purpose’ above, or write your own. You can refine with the AI tools."
+                            value={purpose} onChange={(v) => setInput(1, "purpose_statement", v)}
+                            testIdPrefix="purpose-statement-field"
+                        />
+                    </div>
+                </div>
+            </div>
         </Section>
     );
 }
 
-// =================== DRIVEN ===================
-function DrivenSection({ planId, getInput, setInput }) {
+// =================== BECOME DRIVEN ===================
+function BecomeDriven({ planId, getInput, setInput }) {
     return (
-        <Section eyebrow="Driven, not Drifter" title="Five questions to wake up your direction." helper="Answer each. Use AI to help when the page feels blank.">
+        <Section eyebrow="Become Driven" title="Drift, or drive." helper="Russell Brunson articulates the choice that defines every entrepreneur. Reflect on these five questions in that light.">
+            <figure className="my-2">
+                <blockquote className="font-serif text-xl md:text-2xl italic leading-snug text-foreground/90 pl-6 border-l-2 border-brand-gold" data-testid="russell-brunson-quote">
+                    “{BECOME_DRIVEN_QUOTE.text}”
+                </blockquote>
+                <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— {BECOME_DRIVEN_QUOTE.attribution}</figcaption>
+            </figure>
+
+            <div className="my-6">
+                <BecomeDrivenLearnMore />
+            </div>
+
             <div className="space-y-6">
                 {DRIVEN_QUESTIONS.map((q, i) => (
                     <div key={i}>
@@ -362,36 +424,154 @@ function DrivenSection({ planId, getInput, setInput }) {
     );
 }
 
+function BecomeDrivenLearnMore() {
+    return (
+        <RawDialog>
+            <RawDialogTrigger asChild>
+                <Button variant="outline" className="rounded-full" data-testid="learn-more-driven-button">
+                    <BookOpen className="h-4 w-4 mr-2" /> Learn more
+                </Button>
+            </RawDialogTrigger>
+            <RawDialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" data-testid="learn-more-driven-dialog">
+                <RawDialogHeader>
+                    <div className="label-eyebrow text-brand-bronze mb-1">From Napoleon Hill’s Outwitting the Devil</div>
+                    <RawDialogTitle className="font-serif text-3xl tracking-[-0.02em]">{BECOME_DRIVEN_LEARN_MORE.title}</RawDialogTitle>
+                </RawDialogHeader>
+                <p className="text-sm leading-relaxed text-muted-foreground mt-2">{BECOME_DRIVEN_LEARN_MORE.intro}</p>
+                <div className="my-5 grid grid-cols-2 gap-3">
+                    <div className="editorial-card p-4 text-center">
+                        <div className="font-serif text-4xl text-destructive">{BECOME_DRIVEN_LEARN_MORE.stat.drifters}</div>
+                        <div className="label-eyebrow mt-1">Drifters</div>
+                    </div>
+                    <div className="editorial-card p-4 text-center">
+                        <div className="font-serif text-4xl text-brand-bronze">{BECOME_DRIVEN_LEARN_MORE.stat.driven}</div>
+                        <div className="label-eyebrow mt-1">Driven</div>
+                    </div>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2 mb-5 text-center">{BECOME_DRIVEN_LEARN_MORE.stat.note}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <div className="font-serif text-xl mb-3">{BECOME_DRIVEN_LEARN_MORE.drifter.title}</div>
+                        <ul className="space-y-3">
+                            {BECOME_DRIVEN_LEARN_MORE.drifter.items.map((it, i) => (
+                                <li key={i}>
+                                    <div className="text-sm font-medium">{it.name}</div>
+                                    <div className="text-xs text-muted-foreground leading-relaxed">{it.body}</div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <div className="font-serif text-xl mb-3 text-brand-bronze">{BECOME_DRIVEN_LEARN_MORE.driven.title}</div>
+                        <ul className="space-y-3">
+                            {BECOME_DRIVEN_LEARN_MORE.driven.items.map((it, i) => (
+                                <li key={i}>
+                                    <div className="text-sm font-medium">{it.name}</div>
+                                    <div className="text-xs text-muted-foreground leading-relaxed">{it.body}</div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+                <p className="mt-5 text-sm leading-relaxed border-t pt-4 border-border italic text-foreground/80">{BECOME_DRIVEN_LEARN_MORE.takeaway}</p>
+            </RawDialogContent>
+        </RawDialog>
+    );
+}
+
 // =================== MTP ===================
 function MTPSection({ planId, getInput, setInput }) {
     const [active, setActive] = useState(MTP_CATEGORIES[0].key);
     const [synthBusy, setSynthBusy] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
-    async function synthesizeMTP() {
+    // Compute completion: a category is "done" if at least 3 of its 10 questions are answered.
+    const categoryStatuses = MTP_CATEGORIES.map((cat) => {
+        const filled = cat.questions.filter((q, i) => (getInput(1, `mtp_${cat.key}_${i + 1}`) || "").trim().length > 0).length;
+        const done = filled >= 3;
+        return { key: cat.key, label: cat.label, filled, done };
+    });
+    const completedCount = categoryStatuses.filter((s) => s.done).length;
+
+    const activeIdx = MTP_CATEGORIES.findIndex((c) => c.key === active);
+    const nextCat = activeIdx < MTP_CATEGORIES.length - 1 ? MTP_CATEGORIES[activeIdx + 1] : null;
+
+    async function doSynthesize() {
+        const all = MTP_CATEGORIES.flatMap((cat) => cat.questions.map((q, i) => ({ cat: cat.label, q, a: getInput(1, `mtp_${cat.key}_${i + 1}`) })));
+        const ctx = all.filter((x) => x.a).map((x) => `[${x.cat}] ${x.q}\n=> ${x.a}`).join("\n\n");
+        const purpose = getInput(1, "purpose_statement") || "";
+
+        if (!ctx) {
+            toast.error("Answer at least a few reflections before synthesizing.");
+            return;
+        }
         setSynthBusy(true);
         try {
-            const all = MTP_CATEGORIES.flatMap((cat) => cat.questions.map((q, i) => ({ cat: cat.label, q, a: getInput(1, `mtp_${cat.key}_${i + 1}`) })));
-            const ctx = all.filter((x) => x.a).map((x) => `[${x.cat}] ${x.q}\n=> ${x.a}`).join("\n\n");
             await streamingGenerate({
                 field_key: "mtp_statement",
                 field_label: "Massive Transformative Purpose statement",
-                extra_context: { reflections: ctx },
-                instructions: "From these reflections across Passions, Values, Strengths, Patterns and Impact, synthesize a single Massive Transformative Purpose (MTP) statement that is 8–10 words. It should be inspirational, action-oriented, and uniquely the user's. Return ONLY the MTP statement — nothing else.",
+                extra_context: { reflections: ctx, existing_purpose: purpose },
+                instructions:
+                    "From these reflections across Passions, Values, Strengths, Patterns and Impact, synthesize a single Massive Transformative Purpose (MTP) statement that is 8–10 words. " +
+                    "It must be inspirational, action-oriented, and uniquely the user’s. " +
+                    (purpose ? "CRITICAL: the MTP must align with and emerge naturally from the existing PURPOSE paragraph already articulated. Use the same core direction; do not contradict it. " : "") +
+                    "Return ONLY the MTP statement — nothing else.",
                 planId, stepNum: 1, mode: "synthesize",
                 onText: (t) => setInput(1, "mtp_statement", t)
             });
-        } finally { setSynthBusy(false); }
+        } finally { setSynthBusy(false); setConfirmOpen(false); }
     }
 
     return (
-        <Section eyebrow="MTP Discovery" title="Massive Transformative Purpose." helper="Five categories, 50 reflections. Answer the ones that pull you. Then synthesize.">
-            <div className="flex flex-wrap gap-2 mb-5">
-                {MTP_CATEGORIES.map((c) => (
-                    <button key={c.key} onClick={() => setActive(c.key)}
-                        className={`text-xs uppercase tracking-[0.18em] px-3 py-1.5 rounded-full border ${active === c.key ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : "hover:bg-secondary"}`}
-                        data-testid={`mtp-cat-${c.key}-button`}>{c.label}</button>
-                ))}
+        <Section eyebrow="MTP Discovery" title="Massive Transformative Purpose." helper="Five categories. Don’t answer every question — answer the ones that pull you. When you’re ready, synthesize.">
+            <figure className="my-2">
+                <blockquote className="font-serif text-xl md:text-2xl italic leading-snug text-foreground/90 pl-6 border-l-2 border-brand-gold" data-testid="churchill-quote">
+                    “{MTP_CHURCHILL_QUOTE.text}”
+                </blockquote>
+                <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— {MTP_CHURCHILL_QUOTE.attribution}</figcaption>
+            </figure>
+
+            <div className="mt-5 mb-7 flex flex-wrap gap-2">
+                <InfoDialog
+                    trigger={<Button variant="outline" className="rounded-full" data-testid="mtp-learn-more-button"><BookOpen className="h-4 w-4 mr-2" /> Learn more</Button>}
+                    eyebrow="Steven Kotler"
+                    title={MTP_LEARN_MORE.title}
+                    intro={MTP_LEARN_MORE.intro}
+                    points={MTP_LEARN_MORE.points}
+                    testIdPrefix="mtp-learn-more"
+                />
+                <InfoDialog
+                    trigger={<Button variant="outline" className="rounded-full" data-testid="mtp-key-aspects-button"><Sparkles className="h-4 w-4 mr-2" /> Key Aspects</Button>}
+                    eyebrow="MTP · 6 Characteristics"
+                    title={MTP_KEY_ASPECTS.title}
+                    intro={MTP_KEY_ASPECTS.intro}
+                    points={MTP_KEY_ASPECTS.points}
+                    testIdPrefix="mtp-key-aspects"
+                />
+                <InfoDialog
+                    trigger={<Button variant="outline" className="rounded-full" data-testid="mtp-examples-button"><Target className="h-4 w-4 mr-2" /> Examples</Button>}
+                    eyebrow="Famous MTPs"
+                    title={MTP_EXAMPLES.title}
+                    intro={MTP_EXAMPLES.intro}
+                    points={MTP_EXAMPLES.points}
+                    closing={MTP_EXAMPLES.closing}
+                    testIdPrefix="mtp-examples"
+                />
             </div>
+
+            {/* Category chips with progress */}
+            <div className="flex flex-wrap gap-2 mb-5" data-testid="mtp-category-chips">
+                {categoryStatuses.map((s, i) => (
+                    <button key={s.key} onClick={() => setActive(s.key)}
+                        className={`text-xs uppercase tracking-[0.18em] px-3 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${active === s.key ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : s.done ? "bg-brand-gold/10 border-brand-gold text-brand-bronze" : "hover:bg-secondary"}`}
+                        data-testid={`mtp-cat-${s.key}-button`}>
+                        {s.done && <Check className="h-3 w-3" />}
+                        {s.label}
+                    </button>
+                ))}
+                <span className="text-xs text-muted-foreground self-center ml-2" data-testid="mtp-completion-counter">{completedCount} of 5 categories complete</span>
+            </div>
+
             {MTP_CATEGORIES.filter((c) => c.key === active).map((c) => (
                 <div key={c.key}>
                     <p className="text-sm text-muted-foreground mb-5">{c.helper}</p>
@@ -405,18 +585,52 @@ function MTPSection({ planId, getInput, setInput }) {
                             </div>
                         ))}
                     </div>
+
+                    {/* Per-category Next button */}
+                    {nextCat && (
+                        <div className="mt-7 flex justify-end" data-testid="mtp-category-nav">
+                            <Button onClick={() => { setActive(nextCat.key); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-full" variant="outline" data-testid={`mtp-next-cat-${nextCat.key}-button`}>
+                                Next: {nextCat.label} <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
             ))}
-            <div className="mt-8 dark-cinematic-panel p-7 md:p-8">
+
+            {/* Synthesize MTP */}
+            <div className="mt-10 dark-cinematic-panel p-7 md:p-8">
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
                     <div>
                         <div className="label-eyebrow text-brand-gold mb-1">Synthesize</div>
                         <h3 className="font-serif text-2xl">Distill all reflections into your MTP.</h3>
-                        <p className="text-brand-cream/70 text-sm mt-1">8–10 words. Inspirational. Uniquely yours.</p>
+                        <p className="text-brand-cream/70 text-sm mt-1">8–10 words. Inspirational. Aligned with your already-defined Purpose.</p>
                     </div>
-                    <Button onClick={synthesizeMTP} disabled={synthBusy} className="cta-red rounded-full h-11 px-5" data-testid="synthesize-mtp-button">
-                        {synthBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Synthesize my MTP</>}
-                    </Button>
+                    <RawDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                        <RawDialogTrigger asChild>
+                            <Button disabled={synthBusy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="synthesize-mtp-button">
+                                {synthBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Synthesize my MTP</>}
+                            </Button>
+                        </RawDialogTrigger>
+                        <RawDialogContent data-testid="synthesize-mtp-confirm-dialog">
+                            <RawDialogHeader>
+                                <div className="label-eyebrow text-brand-bronze mb-1">Synthesize MTP</div>
+                                <RawDialogTitle className="font-serif text-2xl">Ready to create your MTP?</RawDialogTitle>
+                            </RawDialogHeader>
+                            <p className="text-sm leading-relaxed">
+                                You’ve completed <span className="font-semibold text-brand-bronze" data-testid="synthesize-mtp-counter">{completedCount} of 5</span> categories
+                                {completedCount < 3 ? " — we recommend completing at least 3 for a richer MTP, but you can proceed with what you have." : completedCount === 5 ? " — wonderful, you’ve done all five." : " — a solid foundation."}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-3">
+                                The MTP will be aligned with your Purpose paragraph from the previous section.
+                            </p>
+                            <div className="flex justify-end gap-2 mt-5">
+                                <Button variant="ghost" onClick={() => setConfirmOpen(false)} data-testid="synthesize-mtp-cancel-button">Cancel</Button>
+                                <Button onClick={doSynthesize} disabled={synthBusy} className="cta-red rounded-full" data-testid="synthesize-mtp-confirm-button">
+                                    {synthBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Yes, create my MTP</>}
+                                </Button>
+                            </div>
+                        </RawDialogContent>
+                    </RawDialog>
                 </div>
                 {getInput(1, "mtp_statement") && (
                     <div className="mt-5 border-t border-white/10 pt-5">

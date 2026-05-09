@@ -16,15 +16,51 @@ export const FINDING_PURPOSE_PRIORITIES = ["God", "Family", "Friends", "Work", "
 
 export const NAPOLEON_HILL_LEARN_MORE = {
     title: "Finding Your Purpose",
-    intro: "Napoleon Hill presented the concept years ago as Definiteness of Purpose — having a clear, unwavering vision of what one wants to achieve, coupled with a deep, intense desire and a persistent effort to realize that vision. This usually includes what you are willing to \u201cgive\u201d to accomplish this goal.",
+    intro: "Napoleon Hill presented the concept years ago as Definiteness of Purpose — having a clear, unwavering vision of what one wants to achieve, coupled with a deep, intense desire and a persistent effort to realize that vision. This usually includes what you are willing to “give” to accomplish this goal.",
     points: [
         { title: "Clarity of Goal", body: "It requires having a specific and clearly defined objective. This clarity is crucial because it directs all your efforts and decisions towards achieving that particular goal." },
         { title: "Persistence and Commitment", body: "Hill emphasizes the importance of persistent and continuous effort towards your goal. This unwavering commitment is essential for overcoming obstacles and achieving success." },
-        { title: "Burning Desire", body: "He talks about having a \u201cburning desire\u201d for its achievement. This intense desire acts as a powerful motivational force that propels you towards your goal." },
+        { title: "Burning Desire", body: "He talks about having a “burning desire” for its achievement. This intense desire acts as a powerful motivational force that propels you towards your goal." },
         { title: "Action-Oriented Approach", body: "Hill argues that simply having a purpose is not enough; it must be accompanied by continuous action. A definitive plan, coupled with continuous action toward that plan, is essential." },
-        { title: "Influence on Subconscious Mind", body: "Hill believes that a definiteness of purpose, combined with a burning desire, impresses one\u2019s objectives upon the subconscious mind, thereby setting in motion the forces that eventually lead to material realization." },
-        { title: "Positive Influence on Others", body: "A clear purpose can also positively affect one\u2019s ability to influence and lead others. It attracts the cooperation of other people who are attuned to the same goal." }
+        { title: "Influence on Subconscious Mind", body: "Hill believes that a definiteness of purpose, combined with a burning desire, impresses one’s objectives upon the subconscious mind, thereby setting in motion the forces that eventually lead to material realization." },
+        { title: "Positive Influence on Others", body: "A clear purpose can also positively affect one’s ability to influence and lead others. It attracts the cooperation of other people who are attuned to the same goal." }
     ]
+};
+
+export const BECOME_DRIVEN_QUOTE = {
+    text: "There are two patterns most people fall into: Drifting… or Driving. Drifting is unconscious. It's running on autopilot... Driven is conscious. It's choosing your values. Defining your identity.",
+    attribution: "Russell Brunson"
+};
+
+export const BECOME_DRIVEN_LEARN_MORE = {
+    title: "Become Driven",
+    intro: "In Outwitting the Devil, Napoleon Hill defines the difference between a drifter and a driven person (non-drifter) based on whether they use their own mind, take initiative, and have a clear, definite purpose.",
+    stat: { drifters: "98%", driven: "2%", note: "of the population are drifters; only 2% are driven individuals who refuse to let fear dictate their path." },
+    drifter: {
+        title: "The Drifter (the 98%)",
+        items: [
+            { name: "Lack of Purpose", body: "Total lack of a major purpose in life." },
+            { name: "Passive Mindset", body: "Easily influenced by environment and external circumstances." },
+            { name: "Avoids Thinking", body: "Works harder to avoid thinking than others do to earn a living." },
+            { name: "Path of Least Resistance", body: "Always takes the easiest way out." },
+            { name: "Fearful", body: "Subject to worry, sadness, sickness, and despair." },
+            { name: "Unoriginal Opinions", body: "Has many opinions but none are their own." },
+            { name: "Failure Management", body: "Repeats the same mistakes, never profiting by failure." }
+        ]
+    },
+    driven: {
+        title: "The Driven / Non-Drifter (the 2%)",
+        items: [
+            { name: "Definiteness of Purpose", body: "Has a major, specific goal they are working toward." },
+            { name: "Independent Thinker", body: "Uses their own mind and does not allow external influences to dictate their choices." },
+            { name: "Resilient", body: "Views failure as temporary defeat and keeps going." },
+            { name: "Creator of Opportunity", body: "Creates opportunities rather than waiting for them." },
+            { name: "Confidence", body: "Exhibits a high level of self-confidence and initiative." },
+            { name: "Helpful", body: "Acts as a “go-giver” rather than a “go-getter,” providing value to others." },
+            { name: "Self-Control", body: "Exercises command over their emotions and actions." }
+        ]
+    },
+    takeaway: "The main takeaway: fear controls the 98% by disrupting their ability to think, while the 2% use their own minds and build the habit of definiteness of purpose."
 };
 
 export const DRIVEN_QUESTIONS = [
@@ -34,6 +70,57 @@ export const DRIVEN_QUESTIONS = [
     "How do you measure success in your personal life and work? Is it by external standards, or by your own internal compass?",
     "What is one thing you can begin doing today to live more deliberately and align with your true direction?"
 ];
+
+export const MTP_CHURCHILL_QUOTE = {
+    text: "To each there comes in their lifetime a special moment when they are figuratively tapped on the shoulder and offered the chance to do a very special thing, unique to them and fitted to their talents. What a tragedy if that moment finds them unprepared or unqualified for that which could have been their finest hour.",
+    attribution: "Winston S. Churchill"
+};
+
+export const MTP_LEARN_MORE = {
+    title: "Finding Your MTP — Steven Kotler’s Process",
+    intro: "Steven Kotler, a leading expert on peak performance, describes the process of finding your Massively Transformative Purpose (MTP) as a multi-step journey that combines personal passion with a larger, altruistic goal. Here’s a breakdown of the process as described by Kotler:",
+    points: [
+        { title: "Identify Your Passion(s)", body: "The first step involves introspection to discover what you are deeply passionate about. This could be anything that intensely interests you or activities that you find profoundly satisfying." },
+        { title: "Link Your Passion to a Larger Purpose", body: "Kotler emphasizes the importance of aligning your personal passion with a larger purpose that can have a significant impact on the world. This step is about thinking how your passions can serve a bigger cause or address a major challenge." },
+        { title: "Assess the Trends", body: "Understanding current trends and how they might intersect with your passions and the larger purpose is crucial. Kotler suggests that aligning your MTP with emerging trends can amplify its impact." },
+        { title: "Think Exponentially, Not Linearly", body: "Kotler encourages thinking in terms of exponential growth and impact, as opposed to linear progression. This involves considering how technology and innovative approaches can be leveraged to achieve your MTP." },
+        { title: "Develop a Growth Mindset", body: "A growth mindset, as opposed to a fixed mindset, is critical in pursuing an MTP. It involves embracing challenges, persisting in the face of setbacks, and viewing effort as the path to mastery." },
+        { title: "Leverage the Crowd", body: "Kotler points out the importance of leveraging collective knowledge and resources. This could involve crowd-sourcing ideas, using social media to build communities, or engaging in collaborative projects." },
+        { title: "Iterate and Adapt", body: "The journey towards realizing an MTP is often filled with trials and errors. Kotler suggests remaining flexible, learning from failures, and continuously adapting strategies." },
+        { title: "Stay Committed and Persistent", body: "Finally, Kotler emphasizes the need for unwavering commitment and persistence. Finding and pursuing an MTP is a challenging path that requires resilience and a long-term perspective." }
+    ]
+};
+
+export const MTP_KEY_ASPECTS = {
+    title: "Key Aspects of an MTP",
+    intro: "A “Massively Transformative Purpose” (MTP) refers to a highly ambitious, overarching objective or mission that drives you and your business to create significant change or impact in the world. Key characteristics of an MTP include:",
+    points: [
+        { title: "Visionary and Aspirational", body: "An MTP typically involves a bold and inspiring vision that challenges the status quo and aims to bring about substantial transformation." },
+        { title: "Purpose-Driven", body: "It is rooted in a deep sense of purpose, often aligning with core values and a desire to make a meaningful impact." },
+        { title: "Broad in Scope", body: "An MTP usually has a broad, often global scope, addressing major challenges or opportunities that affect many people or industries." },
+        { title: "Motivational and Energizing", body: "It serves as a powerful motivator, not just for the individual or team behind it, but also for attracting and rallying others who share similar aspirations." },
+        { title: "Long-Term Oriented", body: "An MTP is typically long-term in nature, focusing on significant achievements that may take years or even decades to realize." },
+        { title: "Innovative and Disruptive", body: "It often involves innovative thinking and approaches, sometimes disrupting existing systems, models, or paradigms." }
+    ]
+};
+
+export const MTP_EXAMPLES = {
+    title: "Famous MTP Examples",
+    intro: "Massively Transformative Purposes (MTPs) are grand, ambitious missions that drive individuals, companies, and organizations to create significant impact. Here are some notable examples:",
+    points: [
+        { title: "SpaceX", body: "“Enable humans to become a multiplanetary species.” Founded by Elon Musk, SpaceX’s MTP is not just about advancing space technology but about ensuring the survival and flourishing of humanity by making life multiplanetary, starting with colonizing Mars." },
+        { title: "Tesla", body: "“Accelerate the world’s transition to sustainable energy.” Another venture of Elon Musk, Tesla’s MTP is focused on combating climate change by promoting sustainable energy through electric vehicles and renewable energy products." },
+        { title: "Google", body: "“Organize the world’s information and make it universally accessible and useful.” Google’s MTP reflects its ambition to develop technologies that process, sort, and make the vast amounts of information on the internet accessible to everyone." },
+        { title: "Facebook (Meta)", body: "“Give people the power to build community and bring the world closer together.” This MTP, evolving as the company transitions to focus on the metaverse, aims to create digital platforms and technologies that foster community and connectivity." },
+        { title: "Amazon", body: "“To be Earth’s most customer-centric company.” Amazon’s MTP is about revolutionizing retail and customer service, focused on delivering an exceptional experience for consumers globally." },
+        { title: "Microsoft", body: "“Empower every person and every organization on the planet to achieve more.” Microsoft’s MTP focuses on creating technology that enables people and businesses around the world to realize their full potential." },
+        { title: "Singularity University", body: "“Educate, inspire, and empower leaders to apply exponential technologies to address humanity’s grand challenges.” Singularity University’s MTP is about using rapidly advancing technologies to solve major global issues like poverty, water scarcity, and energy needs." },
+        { title: "Spanx", body: "“Elevating Women.” Sara Blakely utilized this MTP to build a multi-billion-dollar enterprise from $5,000 of personal savings." },
+        { title: "Uber", body: "“Go anywhere, Get anything.” Uber’s MTP is not just focused on the transportation of individuals, but also allows the company to explore a wider business model of mobility-based services." },
+        { title: "XPRIZE", body: "“A bridge to abundance for all.” This MTP was designed to encompass a vast range of different initiatives — from prizes for spaceflight to cleaning up oil spills to ocean health to a medical tricorder — while keeping the guardrails of competition and awards." }
+    ],
+    closing: "These MTPs are not just corporate slogans; they are deeply ingrained in the missions and operations of these organizations. They serve as guiding principles that shape company strategies, innovations, and the overall direction of their efforts."
+};
 
 export const MTP_CATEGORIES = [
     {
