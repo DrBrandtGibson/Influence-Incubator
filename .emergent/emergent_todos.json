@@ -1,14 +1,14 @@
 [
   {
-    "content": "Phase 0: POC — Supabase Auth/RLS + Claude Sonnet 4.5 SSE streaming",
+    "content": "Phase 0: POC — Supabase Auth/RLS + Claude Sonnet 4.5 SSE streaming ✅",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 1: Get design guidelines + Foundation, brand UI, auth flows, landing page",
     "status": "in_progress"
   },
   {
-    "content": "Phase 1: Foundation, brand UI, auth flows, landing page",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 2: Supabase schema + RLS + plan wizard + step navigator + Universal AI Assist",
+    "content": "Phase 2: Plan wizard + step navigator + Universal AI Assist component + AI endpoints",
     "status": "pending"
   },
   {
