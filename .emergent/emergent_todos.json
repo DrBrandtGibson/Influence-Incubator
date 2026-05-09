@@ -1,0 +1,38 @@
+[
+  {
+    "content": "Phase 0: POC — Supabase Auth/RLS + Claude Sonnet 4.5 SSE streaming",
+    "status": "in_progress"
+  },
+  {
+    "content": "Phase 1: Foundation, brand UI, auth flows, landing page",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 2: Supabase schema + RLS + plan wizard + step navigator + Universal AI Assist",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3: Step 1 DEFINE Your Purpose (free, full)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 4: Step 2 EXTRACT Your Audience (free, full) + celebration + soft upgrade",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 4: End-to-end testing via testing_agent_v3 → PAUSE for user review",
+    "status": "pending"
+  },
+  {
+    "content": "Phases 5-9: Steps 3-7 (pro) with locked previews",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 10: Polish + PDF/Word exports + accessibility",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 11: Stripe paywall integration",
+    "status": "pending"
+  }
+]
