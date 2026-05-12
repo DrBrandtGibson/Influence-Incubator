@@ -395,3 +395,115 @@ export const FRAME_HEROS_JOURNEY_INTRO =
 export const HSO_INTRO =
     "Hook · Story · Offer is the architecture every persuasive message uses — from the great sermons to the best podcast intros to your favorite landing page. " +
     "Once your Brand Voice, Story Bank and Hero's Journey are in place, this becomes assembly, not invention.";
+
+// ============ STEP 4 — IGNITE Your Brand ============
+
+// ---- 12 Jungian Brand Archetypes ----
+export const BRAND_ARCHETYPES = [
+    { key: "hero",       name: "The Hero",      motto: "Where there's a will, there's a way.",        vibe: "Courage, mastery, decisive action",   examples: ["Nike", "BMW", "U.S. Army"] },
+    { key: "sage",       name: "The Sage",      motto: "The truth will set you free.",                vibe: "Wisdom, discernment, education",      examples: ["BBC", "Google", "TED"] },
+    { key: "magician",   name: "The Magician",  motto: "I can make dreams come true.",                vibe: "Transformation, vision, possibility", examples: ["Disney", "Apple", "Tesla"] },
+    { key: "outlaw",     name: "The Outlaw",    motto: "Rules are made to be broken.",                vibe: "Disruption, rebellion, freedom",      examples: ["Harley-Davidson", "Virgin", "Diesel"] },
+    { key: "explorer",   name: "The Explorer",  motto: "Don't fence me in.",                          vibe: "Adventure, freedom, discovery",       examples: ["Patagonia", "Jeep", "REI"] },
+    { key: "ruler",      name: "The Ruler",     motto: "Power isn't everything — it's the only thing.", vibe: "Authority, control, legacy",      examples: ["Rolex", "Mercedes-Benz", "American Express"] },
+    { key: "creator",    name: "The Creator",   motto: "If you can imagine it, it can be done.",      vibe: "Imagination, expression, originality", examples: ["LEGO", "Adobe", "Crayola"] },
+    { key: "caregiver",  name: "The Caregiver", motto: "Love your neighbor as yourself.",             vibe: "Compassion, generosity, protection",  examples: ["Johnson & Johnson", "UNICEF", "Volvo"] },
+    { key: "innocent",   name: "The Innocent",  motto: "Free to be you and me.",                      vibe: "Optimism, simplicity, purity",        examples: ["Dove", "Coca-Cola", "Whole Foods"] },
+    { key: "lover",      name: "The Lover",     motto: "I only have eyes for you.",                   vibe: "Passion, intimacy, sensuality",       examples: ["Chanel", "Godiva", "Victoria's Secret"] },
+    { key: "jester",     name: "The Jester",    motto: "You only live once.",                         vibe: "Joy, play, humor",                    examples: ["Old Spice", "Skittles", "Geico"] },
+    { key: "everyman",   name: "The Everyman",  motto: "All men and women are created equal.",        vibe: "Belonging, honesty, relatability",    examples: ["IKEA", "Target", "Levi's"] }
+];
+
+// ---- Pocket Media Empire Channels ----
+export const POCKET_MEDIA_CHANNELS = [
+    { key: "newsletter", name: "Newsletter", helper: "Direct line to your audience's inbox. The highest-trust channel you own." },
+    { key: "blog",       name: "Blog",       helper: "Long-form, searchable, evergreen. The compound interest of marketing." },
+    { key: "podcast",    name: "Podcast",    helper: "Intimate, on-demand voice. Builds parasocial trust at scale." },
+    { key: "video",      name: "Video",      helper: "Highest engagement format. Short-form for reach, long-form for depth." },
+    { key: "events",     name: "Events",     helper: "Real-time gathering. Workshops, webinars, retreats, summits." }
+];
+
+export const POCKET_MEDIA_FIELDS = [
+    { key: "cadence",       label: "Cadence",         helper: "How often will you publish? Pick a rhythm you can keep for 12 months." },
+    { key: "format",        label: "Format",          helper: "What does each piece look like? (e.g. 600-word email, 25-min interview)" },
+    { key: "name",          label: "Working Name",    helper: "The channel name — the thing you'll write at the top." },
+    { key: "first_5_ideas", label: "First 5 Ideas",   helper: "Five concrete first episodes / posts / issues. Specific titles, not topics." },
+    { key: "audience_pull", label: "Audience Pull",   helper: "Why will someone subscribe? What ache or aspiration does this serve?" },
+    { key: "kpi",           label: "KPI",             helper: "The single number you'll watch (subs, downloads, CTR, RSVPs, etc.)." }
+];
+
+// ---- Website Hub Templates ----
+export const WEBSITE_HUB_TEMPLATES = [
+    {
+        key: "influencer",
+        name: "InfluencerHub",
+        desc: "For coaches, creators, and authors building an audience-first brand.",
+        pages: [
+            { key: "home",            name: "Home" },
+            { key: "about",           name: "About / Story" },
+            { key: "work_with",       name: "Work With Me / Services" },
+            { key: "podcast_or_blog", name: "Podcast / Blog" },
+            { key: "free_resource",   name: "Free Resource (Opt-in)" },
+            { key: "speak",           name: "Speaking" },
+            { key: "contact",         name: "Contact" }
+        ]
+    },
+    {
+        key: "medical",
+        name: "MedicalHub",
+        desc: "For practitioners and clinic-based experts integrating online presence.",
+        pages: [
+            { key: "home",              name: "Home" },
+            { key: "about",             name: "About Provider" },
+            { key: "services",          name: "Services / Treatments" },
+            { key: "patient_resources", name: "Patient Resources" },
+            { key: "team",              name: "Team" },
+            { key: "locations",         name: "Locations & Hours" },
+            { key: "book_appt",         name: "Book Appointment" },
+            { key: "contact",           name: "Contact" }
+        ]
+    }
+];
+
+// ---- Marketing Plan Tracks ----
+export const MARKETING_TRACKS = [
+    { key: "diy",   name: "DIY Track",            subtitle: "You own the creation — slow and steady.",   helper: "You write, record, design, post yourself. Cheaper, more authentic. Time-intensive. Best for early stages where voice is being forged." },
+    { key: "ai10x", name: "10X-with-AI Track",    subtitle: "AI as your creative team — speed and volume.", helper: "You direct; AI executes. Tools draft, illustrate, caption, voice. Faster output. Requires editing taste and a clear voice to keep it from going generic." }
+];
+
+export const MARKETING_TRACK_FIELDS = [
+    { key: "weekly_schedule",   label: "Weekly Schedule", helper: "What does a typical week look like on this track? (hours and days)" },
+    { key: "tools",             label: "Tools / Stack",   helper: "Software, platforms, services you'll use on this track." },
+    { key: "time_investment",   label: "Time Investment", helper: "Realistic hours per week, and where they come from." },
+    { key: "expected_outcome",  label: "Expected Outcome", helper: "What you'll have shipped after 90 days on this track." }
+];
+
+// ---- 30/60/90 Content Calendar ----
+export const CALENDAR_PHASES = [
+    { key: "d30",     label: "Days 0–30",  subtitle: "Foundation",    desc: "Establish presence. Ship the basics. Get reps." },
+    { key: "d60",     label: "Days 31–60", subtitle: "Rhythm",        desc: "Lock in consistency. Layer in interaction." },
+    { key: "d90",     label: "Days 61–90", subtitle: "Amplification", desc: "Expand reach. Launch one campaign or offer." },
+    { key: "beyond",  label: "Beyond 90",  subtitle: "Compounding",   desc: "Identify what's working. Double down. Cut the rest." }
+];
+
+export const CALENDAR_PILLARS = [
+    { key: "content",     label: "Content",     helper: "What you make and ship." },
+    { key: "engagement",  label: "Engagement",  helper: "How you respond, DM, comment, show up." },
+    { key: "growth",      label: "Growth",      helper: "Outreach, collabs, paid, SEO." },
+    { key: "offer",       label: "Offer",       helper: "Funnels, launches, calls-to-action." }
+];
+
+// ---- Intros / Copy ----
+export const IGNITE_INTROS = {
+    archetypes: "Carl Jung mapped 12 universal archetypes that humans recognize across every culture. Your brand naturally lives in one as a primary, often shaded by a secondary. Choosing yours gives you a north star for tone, visuals, and decisions.",
+    pocket_media: "Russell Brunson calls it your Pocket Media Empire — the small, owned channels that compound into an audience. You do not need every channel. You need 1–3 you will actually maintain.",
+    website_hub: "Your website is the gravitational center of every other channel. Pick a template that fits your work, and let AI draft the spine.",
+    marketing_plan: "Two ways to ship marketing in 2026: with your own two hands, or with AI as your creative team. Most operators run a blend — but it helps to articulate each track separately first.",
+    calendar: "A 30/60/90 cadence beats a 12-month plan you'll never read. Four phases, four pillars per phase. Fill what is true. The blanks tell you where to focus."
+};
+
+export const IGNITE_JUNG_QUOTE = {
+    text: "Until you make the unconscious conscious, it will direct your life and you will call it fate.",
+    attribution: "Carl Jung"
+};
+

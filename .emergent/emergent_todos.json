@@ -1,14 +1,46 @@
 [
   {
-    "content": "Phase 5 — Step 3 FRAME initial implementation",
+    "content": "Add Step 4 framework constants",
     "status": "completed"
   },
   {
-    "content": "User to flip Pro on test account in Supabase + verify end-to-end",
-    "status": "pending"
+    "content": "Create StepIgnite.jsx with 6 tabs",
+    "status": "completed"
   },
   {
-    "content": "Phase 6 — Step 4 IGNITE (next major phase)",
-    "status": "pending"
+    "content": "Build Brand Personality (12 archetypes + AI palette + AI typography)",
+    "status": "completed"
+  },
+  {
+    "content": "Build Pocket Media Empire (5 channel sub-workspaces)",
+    "status": "completed"
+  },
+  {
+    "content": "Build Website Hub (template picker + AI page copy)",
+    "status": "completed"
+  },
+  {
+    "content": "Build Two-Track Marketing Plan",
+    "status": "completed"
+  },
+  {
+    "content": "Build 30/60/90 Calendar grid",
+    "status": "completed"
+  },
+  {
+    "content": "Build Output card + Complete Step 4 action",
+    "status": "completed"
+  },
+  {
+    "content": "Wire into PlanWorkspace routing",
+    "status": "completed"
+  },
+  {
+    "content": "Lint + smoke test",
+    "status": "completed"
+  },
+  {
+    "content": "Update plan.md",
+    "status": "completed"
   }
 ]
