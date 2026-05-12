@@ -812,7 +812,10 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
         purpose: getInput(1, "fp_q5"),
         mtp: getInput(1, "mtp_statement"),
         why: getInput(1, "why_level_7") || getInput(1, "deep_why"),
+        aim_q3_what: getInput(1, "chief_q3_what"),
         aim_y1_what: getInput(1, "chief_y1_what"),
+        aim_y3_what: getInput(1, "chief_y3_what"),
+        aim_y5_what: getInput(1, "chief_y5_what"),
         structure_chosen: getInput(1, "structure_chosen"),
         structure_rec: getInput(1, "structure_recommendation")
     };
@@ -835,7 +838,7 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const structName = BUSINESS_STRUCTURES.find((b) => b.key === data.structure_chosen)?.name || null;
 
     return (
-        <Section eyebrow="Your Output" title="Your Step 1 plan card." helper="Edit anything by jumping back to the relevant tab. This is your living source-of-truth.">
+        <Section eyebrow="Your Output" title="DEFINE Your Purpose Card" helper="Edit anything by jumping back to the relevant tab. This is your living source-of-truth.">
             <div className="editorial-card p-7 md:p-8" data-testid="step1-output-card">
                 <div className="flex items-start justify-between gap-6">
                     <div className="flex-1 min-w-0">
@@ -848,7 +851,18 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                 <Field label="Purpose" value={data.purpose} multiline />
                 <Field label="Massive Transformative Purpose" value={data.mtp} />
                 <Field label="Deep WHY" value={data.why} />
-                <Field label="1-Year Chief Aim (WHAT)" value={data.aim_y1_what} />
+
+                {/* Chief Aim — all four horizons (WHAT) */}
+                <div className="py-3">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Chief Aim (WHAT)</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="output-chief-aim-grid">
+                        <ChiefAimRow horizon="3-Month Goal" value={data.aim_q3_what} testId="output-chief-q3-what" />
+                        <ChiefAimRow horizon="1-Year Goal" value={data.aim_y1_what} testId="output-chief-y1-what" />
+                        <ChiefAimRow horizon="3-Year Goal" value={data.aim_y3_what} testId="output-chief-y3-what" />
+                        <ChiefAimRow horizon="5-Year Goal" value={data.aim_y5_what} testId="output-chief-y5-what" />
+                    </div>
+                </div>
+
                 <Field label="Business Structure" value={structName} />
                 {data.structure_rec && <Field label="AI Recommendation Notes" value={data.structure_rec} multiline />}
             </div>
@@ -861,6 +875,17 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                 </Button>
             </div>
         </Section>
+    );
+}
+
+function ChiefAimRow({ horizon, value, testId }) {
+    return (
+        <div className="editorial-card p-4 bg-secondary/30" data-testid={testId}>
+            <div className="label-eyebrow text-brand-bronze mb-1">{horizon}</div>
+            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                {value || <span className="text-muted-foreground italic">—</span>}
+            </div>
+        </div>
     );
 }
 

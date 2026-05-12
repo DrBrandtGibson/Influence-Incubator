@@ -1,10 +1,11 @@
 # plan.md — The Influence Incubator Formula (Updated)
 
 ## 1. Objectives
-- **Primary (now achieved for V1 free tier):** Prove core integrations end-to-end: **Supabase (Auth/DB/RLS/Storage)** + **FastAPI** + **Claude Sonnet 4.5** with **SSE-style streaming** and context-aware generation.
+- **Primary (achieved for V1 free tier):** Prove core integrations end-to-end: **Supabase (Auth/DB/RLS/Storage)** + **FastAPI** + **Claude Sonnet 4.5** with **SSE-style streaming** and context-aware generation.
 - **Ship V1 (Phases 1–4) as a polished free-tier product:** Landing + Auth + Dashboard + Plan Wizard + Plan Workspace + Step Navigator (locks) + **Steps 1–2 fully functional** with **Universal AI Assist on every field**.
+- **Strengthen reliability:** Ensure **all user inputs + AI-generated outputs persist reliably** across rapid navigation and refresh (debounced saves + keepalive + persistence of synthesized outputs).
 - **Set up foundations for Pro:** Locked previews for Steps 3–7, subscription flag in `profiles`, exports and Stripe later.
-- **Current objective (next):** **Pause for review** (user-requested checkpoint after Phases 1–4), then proceed to **Steps 3–7**, then **Exports**, then **Stripe**.
+- **Current objective (next):** Finish **end-to-end verification** of the Step 1 DEFINE refinements + persistence hardening, then proceed to **Steps 3–7**, then **Exports**, then **Stripe**.
 
 ## 2. Implementation Steps
 
@@ -60,7 +61,7 @@
 5) **Universal `<AIAssistInput>` (every question field)**
 - Floating toolbar: **Answer / Expand / Refine**.
 - Streams output from backend SSE endpoints.
-- Auto-saves on blur to `plan_inputs`.
+- **Persistence hardening (added later; see Phase 3 “Reliability fixes”):** now supports debounced auto-save on change (not just blur).
 
 6) **AI endpoints (FastAPI)**
 - `/api/ai/answer-question` (SSE)
@@ -74,28 +75,51 @@
 ---
 
 ### Phase 3 — Step 1 DEFINE (Free, complete) ✅ COMPLETE
-**Delivered Step 1 (6 tabs):**
+**Delivered Step 1 (7 tabs):**
 1) **Identity**
 - Business name input + “Generate 5 name options” (AI)
 - Logo upload to **Supabase Storage** + “Generate 5 logo prompts” (AI)
 - Business structure recommendation (AI)
 
-2) **Driven, not Drifter**
-- 5 verbatim questions with AI assist.
+2) **Finding Your Purpose**
+- 5 guided questions + ranking interaction
+- “Synthesize my Purpose” (AI) and refinable Purpose paragraph
 
-3) **MTP Discovery**
+3) **Become Driven**
+- Russell Brunson framing + learn-more dialog
+- 5 verbatim questions with AI assist
+
+4) **MTP Discovery**
 - 5 categories × 10 verbatim questions each (50 total).
 - “Synthesize my MTP” → **8–10 word** MTP output (AI synthesize).
+- Educational popups: Kotler, key aspects, examples, Churchill quote.
 
-4) **7 Levels Deep WHY**
-- Starter prompt + 7-level cascade + distilled one-sentence WHY.
+5) **7 Levels Deep WHY (Message 229 refinements)**
+- **Starter prompt pre-seeded from synthesized MTP** (editable).
+- **Sequential reveal:** all 7 levels hidden until user clicks Next.
+- Each Next generates a **short single-sentence WHY question** synthesized by AI from the previous answer.
+- **Progression blocked**: Next disabled until the current level has an answer.
+- Level 7 displayed as the **Big Why** in a dark cinematic panel.
 
-5) **Chief Aim**
-- 1-year / 3-year / 5-year horizons × 4 prompts (WHAT / GIVE / DATE / RESULTS).
+6) **Chief Aim (Message 229 refinements)**
+- Displays synthesized MTP as **read-only banner** at top.
+- Adds Brandt Gibson quote: “The most effective method…”
+- Horizons include **3-Month / 1-Year / 3-Year / 5-Year**.
+- Each horizon uses the same set of subfields: **WHAT / GIVE / DATE / RESULTS** with AI assist.
 
-6) **Your Output**
-- Output card: Business Name, Logo, MTP, Deep WHY, 1-Year Aim (WHAT), Structure recommendation.
-- “Complete Step 1” button marks `plan_steps.step_num=1` complete and advances.
+7) **Your Output (updated)**
+- Header updated: **“DEFINE Your Purpose Card”** (was “Your Step 1 plan card”).
+- Output card includes: Business Name, Logo, Purpose, MTP, Deep WHY.
+- **Chief Aim (WHAT) now shows all 4 horizons** (3-Month, 1-Year, 3-Year, 5-Year) in a clean 2×2 grid.
+- “Complete Step 1” marks `plan_steps.step_num=1` complete and advances.
+
+**Reliability fixes (persistence hardening) ✅ COMPLETE**
+- Added `keepalive: true` to all `/api/plans/{id}/inputs` persist calls (survives navigation/unmount).
+- Wired `usePersistedField` inside `AIAssistInput` so **every keystroke** is debounced-auto-saved (no longer relies solely on `onBlur`, which caused `ERR_ABORTED`).
+- Updated `streamingGenerate` helper to **auto-persist AI-generated values** to `plan_inputs` so they survive refresh (e.g., `mtp_statement`, `why_question_*`, `purpose_statement`, `business_names`, `logo_prompts`, `structure_recommendation`).
+- Output card reads `why_level_7` directly with `deep_why` as fallback (avoids duplicate state bugs).
+
+**Status note:** Feature-complete; pending a clean end-to-end UI verification pass after persistence changes.
 
 ---
 
@@ -136,7 +160,7 @@
 
 **Implementation approach (revised, realistic execution order):**
 For each step 3–7:
-1) Ensure **locked-preview** page is conversion-polished (already present via navigator locks; add per-step preview richness).
+1) Ensure **locked-preview** page is conversion-polished.
 2) Build the **full Pro step implementation** with persistence, AI assist on every field, and step output cards.
 3) Add step completion tracking + navigator status indicators.
 
@@ -145,6 +169,7 @@ For each step 3–7:
 - Story Bank builder
 - Hero’s Journey 12-stage wheel × 2 journeys
 - Hook-Story-Offer generator
+- Important Stories distillation
 
 **Step 4 — IGNITE Your Brand (Pro, largest):**
 - Brand personality/archetypes
@@ -184,6 +209,7 @@ For each step 3–7:
 - **Word export** (docx): Pro only.
 - Add onboarding tour, accessibility pass (WCAG AA), rate limiting.
 - Increase test coverage (Playwright/Vitest) for critical flows.
+- Add regression checks for persistence (debounced saves + AI output persistence).
 
 ---
 
@@ -196,11 +222,13 @@ For each step 3–7:
 
 ## 3. Next Actions (Immediate)
 **We are at the user-requested checkpoint.**
-1) User review of Phases 1–4 in the live app:
-   - Landing + auth
-   - Dashboard + wizard
-   - Step 1 + Step 2 content + AI assist streaming
-   - Locked-step behavior + upgrade dialog
+1) Run a full end-to-end verification in the live app:
+   - Signup/login
+   - Plan wizard
+   - Step 1: MTP synthesis → 7 Levels Deep WHY cascade (levels 1–7) → confirm Big Why shows
+   - Confirm AI-generated questions and synthesized artifacts persist on refresh
+   - Confirm Chief Aim horizons persist + show correctly in Output card
+   - Step 2 completion + celebration screen
 2) Collect feedback on:
    - wording / flow / UI polish
    - which Pro step to prioritize first (Step 3 vs Step 4)
@@ -210,7 +238,8 @@ For each step 3–7:
 - ✅ Phase 0: Supabase + Claude streaming proven end-to-end with enforced RLS.
 - ✅ Phase 1–4: Steps 1–2 are fully functional, auto-save correctly, and AI Assist streams on every input.
 - ✅ Free gating: 1 plan max + locks on steps 3–7 + upgrade dialog.
-- ✅ UX: premium editorial brand feel; light/dark polished.
+- ✅ Phase 3 refinements: Deep WHY sequential reveal + Chief Aim updates + improved Output card.
+- ✅ Reliability: debounced auto-save + keepalive + AI-generated output persistence.
 - 🔜 Next: Steps 3–7 reach spec-level depth for Pro.
 - 🔜 Exports: watermarked free PDF + full Pro PDF/Word.
 - 🔜 Stripe: upgrades instantly unlock steps; billing portal and webhooks are reliable.

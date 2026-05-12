@@ -16,11 +16,11 @@
     "status": "completed"
   },
   {
-    "content": "Re-run testing agent to verify full 7-level cascade + persistence",
-    "status": "in_progress"
+    "content": "Update Output card: rename header + show all 4 Chief Aim horizons",
+    "status": "completed"
   },
   {
-    "content": "Update plan.md with M229 status",
-    "status": "pending"
+    "content": "Update plan.md",
+    "status": "completed"
   }
 ]
