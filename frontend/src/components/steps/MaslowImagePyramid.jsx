@@ -7,11 +7,11 @@ const LOGO = "https://customer-assets.emergentagent.com/job_pro-unlock-3/artifac
 // Image is ~1.78:1 (wide), pyramid centered with small top/bottom padding.
 // Tuned visually against the supplied artwork — each tier sits inside its colored band.
 const TIERS = [
-    { key: "self_actualization", label: "Self-Actualization", topPct: 4,  bottomPct: 46, color: "#F47174" },
-    { key: "esteem",             label: "Esteem",             topPct: 46, bottomPct: 58, color: "#4F6BFF" },
-    { key: "belonging",          label: "Love & Belonging",   topPct: 58, bottomPct: 71, color: "#FF9755" },
-    { key: "safety",             label: "Safety & Security",  topPct: 71, bottomPct: 83, color: "#7BC74D" },
-    { key: "physiological",      label: "Physiological",      topPct: 83, bottomPct: 96, color: "#7152D6" }
+    { key: "self_actualization", label: "Self-Actualization", topPct: 4,  bottomPct: 40, color: "#F47174" },
+    { key: "esteem",             label: "Esteem",             topPct: 40, bottomPct: 58, color: "#4F6BFF" },
+    { key: "belonging",          label: "Love & Belonging",   topPct: 58, bottomPct: 72, color: "#FF9755" },
+    { key: "safety",             label: "Safety & Security",  topPct: 72, bottomPct: 85, color: "#7BC74D" },
+    { key: "physiological",      label: "Physiological",      topPct: 85, bottomPct: 99, color: "#7152D6" }
 ];
 
 export const MaslowImagePyramid = ({ selected = [], onToggle }) => {
