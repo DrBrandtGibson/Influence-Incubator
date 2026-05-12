@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { AuthShell } from "./Login";
@@ -63,7 +64,7 @@ export default function Signup() {
                 </div>
                 <div>
                     <Label htmlFor="password" className="label-eyebrow text-brand-bronze">Password</Label>
-                    <Input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 h-11 rounded-xl" data-testid="signup-password-input" />
+                    <PasswordInput id="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 h-11 rounded-xl" data-testid="signup-password-input" />
                     <p className="mt-1.5 text-xs text-muted-foreground">At least 8 characters.</p>
                 </div>
                 <Button type="submit" disabled={loading} className="cta-red w-full h-11 rounded-xl" data-testid="signup-submit-button">

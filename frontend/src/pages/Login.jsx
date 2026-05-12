@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { LOGO_URL } from "@/lib/brand";
@@ -41,9 +42,9 @@ export default function Login() {
                 <div>
                     <div className="flex items-center justify-between">
                         <Label htmlFor="password" className="label-eyebrow text-brand-bronze">Password</Label>
-                        <Link to="/forgot-password" className="text-xs text-brand-bronze hover:text-brand-gold" data-testid="login-forgot-link">Forgot?</Link>
+                        <Link to="/forgot-password" className="text-xs text-brand-bronze hover:text-brand-gold font-medium" data-testid="login-forgot-link">Forgot password?</Link>
                     </div>
-                    <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 h-11 rounded-xl" data-testid="login-password-input" />
+                    <PasswordInput id="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 h-11 rounded-xl" data-testid="login-password-input" />
                 </div>
                 <Button type="submit" disabled={loading} className="cta-red w-full h-11 rounded-xl" data-testid="login-submit-button">
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign in <ArrowRight className="ml-2 h-4 w-4" /></>}
