@@ -3,9 +3,9 @@
 ## 1. Objectives
 - **Primary (achieved for V1 free tier):** Prove core integrations end-to-end: **Supabase (Auth/DB/RLS/Storage)** + **FastAPI** + **Claude Sonnet 4.5** with **SSE-style streaming** and context-aware generation.
 - **Ship V1 (Phases 1–4) as a polished free-tier product:** Landing + Auth + Dashboard + Plan Wizard + Plan Workspace + Step Navigator (locks) + **Steps 1–2 fully functional** with **Universal AI Assist on every field**.
-- **Strengthen reliability:** Ensure **all user inputs + AI-generated outputs persist reliably** across rapid navigation and refresh (debounced saves + keepalive + persistence of synthesized outputs).
-- **Set up foundations for Pro:** Locked previews for Steps 3–7, subscription flag in `profiles`, exports and Stripe later.
-- **Current objective (next):** Finish **end-to-end verification** of the Step 1 DEFINE refinements + persistence hardening, then proceed to **Steps 3–7**, then **Exports**, then **Stripe**.
+- **Strengthen reliability (in progress / hardening completed for key flows):** Ensure **all user inputs + AI-generated outputs persist reliably** across rapid navigation and refresh (debounced saves + keepalive + persistence of synthesized outputs).
+- **Ship first Pro step end-to-end:** Deliver **Step 3 (FRAME Your Story)** with consistent UX patterns (tabs, AI assist, synthesis panels, output card, completion).
+- **Current objective (next):** **End-to-end verify Step 3 in live UI (Pro account)** and then proceed to **Step 4–7**, followed by **Exports**, then **Stripe**.
 
 ## 2. Implementation Steps
 
@@ -40,7 +40,7 @@
 **Delivered:**
 1) **Supabase schema + RLS**
 - Applied full schema (idempotent) supporting all phases:
-  - `profiles`, `plans`, `plan_steps`, `plan_inputs`, `ai_runs`, plus step-specific tables (dream_customers, hero journey stages, story bank entries, etc.) and `stripe_events` (Phase 11).
+  - `profiles`, `plans`, `plan_steps`, `plan_inputs`, `ai_runs`, plus step-specific tables and `stripe_events` (Phase 11).
 - RLS policies enforce per-user isolation across tables.
 - Trigger creates `profiles` row on new auth user.
 
@@ -61,7 +61,7 @@
 5) **Universal `<AIAssistInput>` (every question field)**
 - Floating toolbar: **Answer / Expand / Refine**.
 - Streams output from backend SSE endpoints.
-- **Persistence hardening (added later; see Phase 3 “Reliability fixes”):** now supports debounced auto-save on change (not just blur).
+- **Persistence hardening (see Phase 3 “Reliability fixes” + Phase 5 carry-over):** supports debounced auto-save on change (not just blur).
 
 6) **AI endpoints (FastAPI)**
 - `/api/ai/answer-question` (SSE)
@@ -90,36 +90,34 @@
 - 5 verbatim questions with AI assist
 
 4) **MTP Discovery**
-- 5 categories × 10 verbatim questions each (50 total).
-- “Synthesize my MTP” → **8–10 word** MTP output (AI synthesize).
-- Educational popups: Kotler, key aspects, examples, Churchill quote.
+- 5 categories × 10 verbatim questions each (50 total)
+- “Synthesize my MTP” → **8–10 word** MTP output (AI synthesize)
+- Educational popups: Kotler, key aspects, examples, Churchill quote
 
 5) **7 Levels Deep WHY (Message 229 refinements)**
-- **Starter prompt pre-seeded from synthesized MTP** (editable).
-- **Sequential reveal:** all 7 levels hidden until user clicks Next.
-- Each Next generates a **short single-sentence WHY question** synthesized by AI from the previous answer.
-- **Progression blocked**: Next disabled until the current level has an answer.
-- Level 7 displayed as the **Big Why** in a dark cinematic panel.
+- **Starter prompt pre-seeded from synthesized MTP** (editable)
+- **Sequential reveal:** all 7 levels hidden until user clicks Next
+- Each Next generates a **short single-sentence WHY question** synthesized by AI from the previous answer
+- **Progression blocked**: Next disabled until the current level has an answer
+- Level 7 displayed as the **Big Why** in a dark cinematic panel
 
 6) **Chief Aim (Message 229 refinements)**
-- Displays synthesized MTP as **read-only banner** at top.
-- Adds Brandt Gibson quote: “The most effective method…”
-- Horizons include **3-Month / 1-Year / 3-Year / 5-Year**.
-- Each horizon uses the same set of subfields: **WHAT / GIVE / DATE / RESULTS** with AI assist.
+- Displays synthesized MTP as **read-only banner** at top
+- Adds Brandt Gibson quote
+- Horizons include **3-Month / 1-Year / 3-Year / 5-Year**
+- Each horizon uses the same set of subfields: **WHAT / GIVE / DATE / RESULTS** with AI assist
 
 7) **Your Output (updated)**
-- Header updated: **“DEFINE Your Purpose Card”** (was “Your Step 1 plan card”).
-- Output card includes: Business Name, Logo, Purpose, MTP, Deep WHY.
-- **Chief Aim (WHAT) now shows all 4 horizons** (3-Month, 1-Year, 3-Year, 5-Year) in a clean 2×2 grid.
-- “Complete Step 1” marks `plan_steps.step_num=1` complete and advances.
+- Header updated: **“DEFINE Your Purpose Card”**
+- Output card includes: Business Name, Logo, Purpose, MTP, Deep WHY
+- **Chief Aim (WHAT) shows all 4 horizons** (3-Month, 1-Year, 3-Year, 5-Year) in a clean 2×2 grid
+- “Complete Step 1” marks `plan_steps.step_num=1` complete and advances
 
 **Reliability fixes (persistence hardening) ✅ COMPLETE**
-- Added `keepalive: true` to all `/api/plans/{id}/inputs` persist calls (survives navigation/unmount).
-- Wired `usePersistedField` inside `AIAssistInput` so **every keystroke** is debounced-auto-saved (no longer relies solely on `onBlur`, which caused `ERR_ABORTED`).
-- Updated `streamingGenerate` helper to **auto-persist AI-generated values** to `plan_inputs` so they survive refresh (e.g., `mtp_statement`, `why_question_*`, `purpose_statement`, `business_names`, `logo_prompts`, `structure_recommendation`).
-- Output card reads `why_level_7` directly with `deep_why` as fallback (avoids duplicate state bugs).
-
-**Status note:** Feature-complete; pending a clean end-to-end UI verification pass after persistence changes.
+- Added `keepalive: true` to `/api/plans/{id}/inputs` persists.
+- Wired `usePersistedField` inside `AIAssistInput` so **every keystroke** is debounced-auto-saved.
+- Updated `streamingGenerate` helper(s) to **auto-persist AI-generated values** to `plan_inputs` so they survive refresh.
+- Output card reads `why_level_7` directly with `deep_why` as fallback.
 
 ---
 
@@ -127,6 +125,13 @@
 **Delivered Step 2 (6 tabs):**
 1) **Maslow**
 - Clickable pyramid-style UI; selections persisted.
+- **Hit-zone alignment tuning completed** in `MaslowImagePyramid.jsx` to match the artwork.
+  - Current tier bounds:
+    - Self-Actualization: **4–44%**
+    - Esteem: **44–58%**
+    - Love & Belonging: **58–72%**
+    - Safety & Security: **72–85%**
+    - Physiological: **85–99%**
 
 2) **6 Needs**
 - Interactive SVG wheel + list toggles; persisted.
@@ -149,27 +154,88 @@
 **Completion:**
 - “Complete Step 2” marks step complete and shows **Celebration screen** with upgrade CTA.
 
-**Pause point reached:** Phases 1–4 complete end-to-end; per user request, **pause for review** before building Steps 3–7.
+---
+
+### Phase 5 — Step 3 FRAME Your Story (Pro) ✅ INITIAL IMPLEMENTATION COMPLETE
+**Status:** Step 3 core experience implemented and wired into the workspace; ready for end-to-end verification.
+
+**Wiring / Files:**
+- Added Step 3 constants and copy to: `frontend/src/lib/framework.js`
+- Created Step 3 UI: `frontend/src/components/steps/StepFrame.jsx`
+- Routed in workspace: `frontend/src/pages/PlanWorkspace.jsx` now renders Step 3 at `/plans/:id/frame`
+
+**Access / Pro gating:**
+- Step 3 remains Pro-gated through existing app logic.
+- Backend `access.can_access_step` enforces **403** on AI endpoints for step 3+ if user is not Pro.
+- Development preview approach chosen: **flip your test account** in Supabase:
+  - `profiles.subscription_status = 'pro_lifetime'`
+
+**Delivered Step 3 (6 sub-tabs):**
+1) **Brand Voice**
+- 10 verbatim prompts with AI Assist.
+- Seth Godin quote.
+- “Synthesize my Brand Voice” → 3-part profile:
+  - Part 1: Voice in one line
+  - Part 2: 4-sentence profile
+  - Part 3: We say / We don’t say (4 items each)
+
+2) **Story Bank**
+- 9 expandable categories (user-provided):
+  - Early Life
+  - Difficulties
+  - Embarrassing Moments
+  - Previous Failures
+  - Your Successes
+  - New Approach
+  - Misconceptions
+  - Transformation
+  - Bragging Rights
+- Each category uses AI Assist and encourages raw capture.
+
+3) **Hero’s Journey**
+- 12 classical Campbell stages.
+- Interactive SVG wheel with gold highlights for drafted segments.
+- Persona toggle via tabs/switch:
+  - Founder’s Journey (fields suffixed `__founder`)
+  - Customer’s Journey (fields suffixed `__customer`)
+
+4) **Hook · Story · Offer**
+- AI “Generate HSO bundle” using Brand Voice + Story Bank + Founder Journey context.
+- Individual refinement fields for Hook, Story, Offer.
+
+5) **Important Stories (Distillation)**
+- Transformation Promise (1 line) — verbatim helper:
+  - “Identify the transformation you wanted and what it looked like with this new solution.”
+- 200-word Elevator Pitch with AI Synthesize.
+
+6) **Your Output**
+- “FRAME Your Story Card” summary:
+  - Promise
+  - Voice
+  - Hook/Story/Offer (or bundle)
+  - Elevator pitch
+  - Coverage stats: Story Bank X/9, Founder X/12, Customer X/12
+- “Complete Step 3” advances to Step 4.
+
+**Notes:**
+- Lint clean; frontend compiles.
+- Persistence is handled by global `AIAssistInput` debounced saving plus Step 3’s streaming generate persistence.
+
+**Exit criteria for Phase 5 (still pending):**
+- End-to-end UI verification (Pro account): navigation, AI generation, persistence on refresh, completion.
 
 ---
 
-### Phase 5–9 — Steps 3–7 (Pro) + Locked Previews (Free) 🔜 NEXT
+### Phase 6–9 — Steps 4–7 (Pro) + Locked Previews (Free) 🔜 NEXT
 **Current state:**
 - Free users see locked previews / upgrade dialogs for steps 3–7.
-- Pro experience is not yet implemented (coming next).
+- Step 3 is now implemented; steps 4–7 remain Coming Soon / preview.
 
-**Implementation approach (revised, realistic execution order):**
-For each step 3–7:
-1) Ensure **locked-preview** page is conversion-polished.
-2) Build the **full Pro step implementation** with persistence, AI assist on every field, and step output cards.
+**Implementation approach:**
+For each step 4–7:
+1) Ensure locked-preview page is conversion-polished.
+2) Build full Pro step implementation with persistence, AI assist, and an output card.
 3) Add step completion tracking + navigator status indicators.
-
-**Step 3 — FRAME Your Story (Pro):**
-- Brand Voice from prompts
-- Story Bank builder
-- Hero’s Journey 12-stage wheel × 2 journeys
-- Hook-Story-Offer generator
-- Important Stories distillation
 
 **Step 4 — IGNITE Your Brand (Pro, largest):**
 - Brand personality/archetypes
@@ -196,10 +262,6 @@ For each step 3–7:
 - Onboarding flow
 - Retention playbook
 
-**Pro access control:**
-- Continue using `profiles.subscription_status` (`free`, `pro_monthly`, `pro_lifetime`) + `pro_until`.
-- Until Stripe Phase 11, enable a temporary admin toggle for internal testing.
-
 ---
 
 ### Phase 10 — Polish + Exports + Testing Hardening 🔜 UPCOMING
@@ -221,25 +283,30 @@ For each step 3–7:
 - Customer portal, refund policy page, guarantee messaging.
 
 ## 3. Next Actions (Immediate)
-**We are at the user-requested checkpoint.**
-1) Run a full end-to-end verification in the live app:
+1) **Flip your test account to Pro** in Supabase so Step 3 unlocks:
+   - `UPDATE profiles SET subscription_status = 'pro_lifetime' WHERE email = 'YOUR_EMAIL';`
+   - (Or match by `id` if preferred.)
+2) Run a full end-to-end verification in the live app:
    - Signup/login
    - Plan wizard
-   - Step 1: MTP synthesis → 7 Levels Deep WHY cascade (levels 1–7) → confirm Big Why shows
-   - Confirm AI-generated questions and synthesized artifacts persist on refresh
-   - Confirm Chief Aim horizons persist + show correctly in Output card
-   - Step 2 completion + celebration screen
-2) Collect feedback on:
-   - wording / flow / UI polish
-   - which Pro step to prioritize first (Step 3 vs Step 4)
-3) After approval: begin Phase 5 (Step 3 FRAME) implementation.
+   - Step 1 completion (including Deep WHY cascade)
+   - Step 2 completion
+   - **Step 3**:
+     - Brand Voice synthesize
+     - Story Bank entries
+     - Hero’s Journey (founder + customer)
+     - Generate HSO bundle
+     - Synthesize elevator pitch
+     - Confirm persistence on refresh
+     - Complete Step 3 → Step 4
+3) After Step 3 approval: begin Phase 6 (Step 4 IGNITE) implementation.
 
 ## 4. Success Criteria
 - ✅ Phase 0: Supabase + Claude streaming proven end-to-end with enforced RLS.
-- ✅ Phase 1–4: Steps 1–2 are fully functional, auto-save correctly, and AI Assist streams on every input.
-- ✅ Free gating: 1 plan max + locks on steps 3–7 + upgrade dialog.
-- ✅ Phase 3 refinements: Deep WHY sequential reveal + Chief Aim updates + improved Output card.
+- ✅ Phase 1–4: Steps 1–2 fully functional, auto-save correctly, and AI Assist streams on every input.
+- ✅ Step 1 M229 updates complete (Deep WHY sequential reveal + Chief Aim updates) + Output card improvements.
 - ✅ Reliability: debounced auto-save + keepalive + AI-generated output persistence.
-- 🔜 Next: Steps 3–7 reach spec-level depth for Pro.
+- ✅ Step 3 initial implementation complete (FRAME Your Story tabs + output + completion).
+- 🔜 Next: Step 3 end-to-end verification under Pro gating; then Steps 4–7 reach spec-level depth for Pro.
 - 🔜 Exports: watermarked free PDF + full Pro PDF/Word.
 - 🔜 Stripe: upgrades instantly unlock steps; billing portal and webhooks are reliable.

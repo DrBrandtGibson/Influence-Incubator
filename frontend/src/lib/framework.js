@@ -322,3 +322,76 @@ export const PSYCHOGRAPHICS_QUESTIONS = [
     { key: "role_models", q: "Who are the people they want to be like?" },
     { key: "brand_affinities", q: "What brands, books, products do they love and reference?" }
 ];
+
+
+// ============ STEP 3 — FRAME Your Story ============
+
+// ---- Brand Voice ----
+export const BRAND_VOICE_PROMPTS = [
+    { key: "bv_q1",  q: "Three adjectives that describe how you want your brand to sound.", helper: "e.g. calm, deliberate, premium" },
+    { key: "bv_q2",  q: "Three adjectives describing how you do NOT want to sound.", helper: "e.g. hypey, sales-y, casual" },
+    { key: "bv_q3",  q: "If your brand were a person, who would they be?", helper: "A specific public figure, archetype, or composite. Be vivid." },
+    { key: "bv_q4",  q: "What pet phrases or signature words do you find yourself returning to?" },
+    { key: "bv_q5",  q: "What recurring metaphors or images do you reach for when explaining your work?" },
+    { key: "bv_q6",  q: "How do you talk to a close friend vs. a stranger? Which mode feels more authentically you?" },
+    { key: "bv_q7",  q: "What is your relationship with humor in your work? When does it serve, when does it distract?" },
+    { key: "bv_q8",  q: "What level of vulnerability and personal disclosure feels right for you to share publicly?" },
+    { key: "bv_q9",  q: "What phrases, clichés, or jargon would you NEVER use? List the words you actively avoid." },
+    { key: "bv_q10", q: "Name 1–3 writers, podcasters, or speakers whose voice resonates with you. What about their voice specifically?" }
+];
+
+// ---- Story Bank (user-provided 9 prompt categories) ----
+export const STORY_BANK_PROMPTS = [
+    { key: "sb_early_life",       label: "Early Life",          helper: "What did your life look like? What are some important stories from this life?" },
+    { key: "sb_difficulties",     label: "Difficulties",        helper: "What difficulties have you had in life? What bad habits did you have? What were you unable to overcome? What does nobody know about that time?" },
+    { key: "sb_embarrassing",     label: "Embarrassing Moments", helper: "What did you do? What are you not proud of? What did you hide? What have you never told anyone?" },
+    { key: "sb_failures",         label: "Previous Failures",   helper: "What did you already try? What help were you looking for? What did you spend? What did you try that failed?" },
+    { key: "sb_early_successes",  label: "Your Successes",      helper: "What did you experience? What did you learn? What were your pivotal moments?" },
+    { key: "sb_new_approach",     label: "New Approach",        helper: "How did you change your approach? How did your philosophy change? How did your actions change? How did you change?" },
+    { key: "sb_misconceptions",   label: "Misconceptions",      helper: "What lies did you uncover? What were the truths you exposed? What is the right way vs. the wrong way?" },
+    { key: "sb_transformation",   label: "Transformation",      helper: "What changes did you see initially? What progress are you having? What were the first achieved goals?" },
+    { key: "sb_bragging_rights",  label: "Bragging Rights",     helper: "How can you collapse time for others? What success have you achieved? How does life look different now? What are your bragging rights?" }
+];
+
+// ---- Hero's Journey (12 classical stages, distilled for entrepreneurs) ----
+export const HEROS_JOURNEY_STAGES = [
+    { key: "hj_01_ordinary_world",   stage: 1,  label: "The Ordinary World",      helper: "Life before the journey began. The familiar — and the quiet ache underneath it." },
+    { key: "hj_02_call",             stage: 2,  label: "The Call to Adventure",   helper: "The moment that broke the routine. The invitation, problem, or rupture you could not ignore." },
+    { key: "hj_03_refusal",          stage: 3,  label: "Refusal of the Call",     helper: "The hesitation. The reasons you nearly stayed put. Fear, doubt, comfort." },
+    { key: "hj_04_mentor",           stage: 4,  label: "Meeting the Mentor",      helper: "The teacher, book, person or moment that gave you courage and a first map." },
+    { key: "hj_05_threshold",        stage: 5,  label: "Crossing the Threshold",  helper: "The first irreversible step. The day you committed and there was no going back." },
+    { key: "hj_06_tests",            stage: 6,  label: "Tests, Allies, Enemies",  helper: "The early proving ground. Who helped, who hurt, what tested your resolve." },
+    { key: "hj_07_inmost_cave",      stage: 7,  label: "Approach the Inmost Cave", helper: "The point where the real, deeper challenge revealed itself." },
+    { key: "hj_08_ordeal",           stage: 8,  label: "The Ordeal",              helper: "The hardest moment. Where you nearly broke. The dark night of the soul." },
+    { key: "hj_09_reward",           stage: 9,  label: "Reward (Seizing the Sword)", helper: "The breakthrough. What you discovered, claimed, or earned on the other side." },
+    { key: "hj_10_road_back",        stage: 10, label: "The Road Back",           helper: "The integration. Bringing the gift back to ordinary life — and the price paid for it." },
+    { key: "hj_11_resurrection",     stage: 11, label: "Resurrection",            helper: "The final test. The identity-level transformation that re-emerged on the other side." },
+    { key: "hj_12_return",           stage: 12, label: "Return with the Elixir",  helper: "What you now carry — and what you give to others. The reason you teach this." }
+];
+
+// ---- Hook-Story-Offer ----
+export const HSO_FIELDS = [
+    { key: "hso_hook",     label: "HOOK",   helper: "The attention-grabber. 1 sentence. A question, statistic, or pattern-interrupt that names the pain or stakes." },
+    { key: "hso_story",    label: "STORY",  helper: "The bridge. A short personal or client transformation story (3–5 sentences) that earns emotional trust." },
+    { key: "hso_offer",    label: "OFFER",  helper: "The specific path. What you are inviting them into — outcome, method, and a clear next step." }
+];
+
+// ---- Important Stories (Distillation) ----
+export const DISTILLATION_PROMPTS = [
+    { key: "dist_transformation_promise", label: "Transformation Promise (1 line)", helper: "Identify the transformation you wanted and what it looked like with this new solution. One vivid sentence: from [old identity/state] to [new identity/state]." },
+    { key: "dist_elevator",               label: "200-word Elevator Pitch",        helper: "A condensed, present-tense narrative: the world you serve, the rupture, the new path, the result. Written in your voice." }
+];
+
+export const FRAME_BRAND_VOICE_QUOTE = {
+    text: "People do not buy goods and services. They buy relations, stories and magic.",
+    attribution: "Seth Godin"
+};
+
+export const FRAME_HEROS_JOURNEY_INTRO =
+    "Joseph Campbell mapped the universal pattern of transformation across thousands of myths — the Hero's Journey. " +
+    "Two journeys live inside every great brand: yours (the founder), and your customer's. " +
+    "Use the 12 stages below to give shape to each. You don't need to fill every stage — sketch what is true.";
+
+export const HSO_INTRO =
+    "Hook · Story · Offer is the architecture every persuasive message uses — from the great sermons to the best podcast intros to your favorite landing page. " +
+    "Once your Brand Voice, Story Bank and Hero's Journey are in place, this becomes assembly, not invention.";

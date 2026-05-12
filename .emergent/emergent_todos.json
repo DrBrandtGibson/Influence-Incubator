@@ -1,26 +1,14 @@
 [
   {
-    "content": "Verify M229 implementation already in place (code review)",
+    "content": "Phase 5 — Step 3 FRAME initial implementation",
     "status": "completed"
   },
   {
-    "content": "Run testing agent on Deep Why sequential reveal flow + Chief Aim",
-    "status": "completed"
+    "content": "User to flip Pro on test account in Supabase + verify end-to-end",
+    "status": "pending"
   },
   {
-    "content": "Fix auto-save bug — add keepalive + debounced persist for AIAssistInput",
-    "status": "completed"
-  },
-  {
-    "content": "Fix AI-generated field persistence (mtp_statement, why_question_*) via streamingGenerate auto-save",
-    "status": "completed"
-  },
-  {
-    "content": "Update Output card: rename header + show all 4 Chief Aim horizons",
-    "status": "completed"
-  },
-  {
-    "content": "Update plan.md",
-    "status": "completed"
+    "content": "Phase 6 — Step 4 IGNITE (next major phase)",
+    "status": "pending"
   }
 ]

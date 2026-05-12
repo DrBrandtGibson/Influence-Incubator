@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import StepDefine from "@/components/steps/StepDefine";
 import StepExtract from "@/components/steps/StepExtract";
+import StepFrame from "@/components/steps/StepFrame";
 
 export default function PlanWorkspace() {
     const { planId, stepKey } = useParams();
@@ -142,6 +143,7 @@ function StepRouter({ stepKey, plan, getInput, setInput, markStepStatus, gotoSte
     const common = { plan, getInput, setInput, markStepStatus, gotoStep };
     if (stepKey === "define") return <StepDefine {...common} />;
     if (stepKey === "extract") return <StepExtract {...common} />;
+    if (stepKey === "frame") return <StepFrame {...common} />;
     return <ComingSoon stepKey={stepKey} />;
 }
 
