@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { authedFetch } from "@/lib/supabase";
+import { usePersistedField } from "@/lib/usePersistedField";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,12 +52,16 @@ export const AIAssistInput = ({
 
     const tid = (slug) => `${testIdPrefix || `field-${stepNum}-${fieldKey}`}-${slug}`;
 
+    // Debounced auto-save on every change (resilient to navigation/unmount via keepalive)
+    usePersistedField({ planId: autoSave ? planId : null, stepNum, fieldKey, value, debounceMs: 400 });
+
     async function persist(currentValue) {
         if (!planId || !autoSave) return;
         if (currentValue === lastSavedRef.current) return;
         try {
             const res = await authedFetch(`/plans/${planId}/inputs`, {
                 method: "POST",
+                keepalive: true,
                 body: JSON.stringify({ step_num: stepNum, field_key: fieldKey, value: currentValue || "" })
             });
             if (res.ok) lastSavedRef.current = currentValue;

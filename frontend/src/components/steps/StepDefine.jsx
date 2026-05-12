@@ -117,7 +117,7 @@ function BusinessIdentity({ planId, getInput, setInput }) {
 
     function pickStructure(key) {
         setInput(1, "structure_chosen", key);
-        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "structure_chosen", value: key }) });
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "structure_chosen", value: key }) });
     }
 
     async function generateNames() {
@@ -280,7 +280,7 @@ function FindingPurpose({ planId, getInput, setInput }) {
 
     function updateRanking(next) {
         setInput(1, "fp_q4", JSON.stringify(next));
-        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "fp_q4", value: JSON.stringify(next) }) });
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "fp_q4", value: JSON.stringify(next) }) });
     }
 
     const [synthBusy, setSynthBusy] = useState(false);
@@ -652,7 +652,7 @@ function DeepWhySection({ planId, getInput, setInput }) {
         const cur = getInput(1, "why_starter");
         if (!cur && mtp) {
             setInput(1, "why_starter", mtp);
-            authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "why_starter", value: mtp }) });
+            authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "why_starter", value: mtp }) });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -663,7 +663,7 @@ function DeepWhySection({ planId, getInput, setInput }) {
 
     function persistRevealed(n) {
         setInput(1, "why_revealed_level", String(n));
-        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "why_revealed_level", value: String(n) }) });
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "why_revealed_level", value: String(n) }) });
     }
 
     async function generateNextQuestion(nextLevel) {
@@ -811,7 +811,7 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
         logo: getInput(1, "logo_url"),
         purpose: getInput(1, "fp_q5"),
         mtp: getInput(1, "mtp_statement"),
-        why: getInput(1, "deep_why"),
+        why: getInput(1, "why_level_7") || getInput(1, "deep_why"),
         aim_y1_what: getInput(1, "chief_y1_what"),
         structure_chosen: getInput(1, "structure_chosen"),
         structure_rec: getInput(1, "structure_recommendation")
@@ -874,7 +874,7 @@ function Field({ label, value, multiline }) {
 }
 
 // Helper: streaming generate
-async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText }) {
+async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText, persist = true }) {
     try {
         const url = `/ai/${mode === "synthesize" ? "synthesize" : "generate"}`;
         const res = await authedFetch(url, {
@@ -906,6 +906,14 @@ async function streamingGenerate({ field_key, field_label, instructions, planId,
                 else if (event === "done") { acc = payload.text || acc; onText && onText(acc); }
                 else if (event === "error") { throw new Error(payload.error || "Generation error"); }
             }
+        }
+        // Persist generated value to plan_inputs so it survives refresh
+        if (persist && planId && acc) {
+            authedFetch(`/plans/${planId}/inputs`, {
+                method: "POST",
+                keepalive: true,
+                body: JSON.stringify({ step_num: stepNum, field_key, value: acc })
+            }).catch(() => { /* swallow */ });
         }
         return acc;
     } catch (e) { toast.error(e.message || "AI failed"); }

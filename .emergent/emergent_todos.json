@@ -5,11 +5,19 @@
   },
   {
     "content": "Run testing agent on Deep Why sequential reveal flow + Chief Aim",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
-    "content": "Fix any bugs surfaced by testing",
-    "status": "pending"
+    "content": "Fix auto-save bug — add keepalive + debounced persist for AIAssistInput",
+    "status": "completed"
+  },
+  {
+    "content": "Fix AI-generated field persistence (mtp_statement, why_question_*) via streamingGenerate auto-save",
+    "status": "completed"
+  },
+  {
+    "content": "Re-run testing agent to verify full 7-level cascade + persistence",
+    "status": "in_progress"
   },
   {
     "content": "Update plan.md with M229 status",

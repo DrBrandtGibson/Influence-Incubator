@@ -15,6 +15,7 @@ export function usePersistedField({ planId, stepNum, fieldKey, value, debounceMs
             lastSentRef.current = serialized;
             authedFetch(`/plans/${planId}/inputs`, {
                 method: "POST",
+                keepalive: true,
                 body: JSON.stringify({ step_num: stepNum, field_key: fieldKey, value: serialized })
             }).catch(() => { /* swallow; will retry on next change */ });
         }, debounceMs);
