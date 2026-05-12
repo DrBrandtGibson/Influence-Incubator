@@ -1,34 +1,18 @@
 [
   {
-    "content": "Backend: /api/uploads/logo endpoint via service role ✅",
+    "content": "Verify M229 implementation already in place (code review)",
     "status": "completed"
   },
   {
-    "content": "Frontend: logo upload via backend ✅",
-    "status": "completed"
+    "content": "Run testing agent on Deep Why sequential reveal flow + Chief Aim",
+    "status": "in_progress"
   },
   {
-    "content": "StepDefine: structure pick + AI recommend optional + required-to-continue ✅",
-    "status": "completed"
+    "content": "Fix any bugs surfaced by testing",
+    "status": "pending"
   },
   {
-    "content": "StepDefine: Finding Your Purpose tab w/ Napoleon Hill quote + Learn More + 5 questions (Q4 sortable) ✅",
-    "status": "completed"
-  },
-  {
-    "content": "StepDefine: bottom Next within step; Output completes → Step 2 ✅",
-    "status": "completed"
-  },
-  {
-    "content": "StepExtract: Maslow image-based pyramid w/ clickable tiers ✅",
-    "status": "completed"
-  },
-  {
-    "content": "StepExtract: bottom Next within step; Card completes → Step 3 ✅",
-    "status": "completed"
-  },
-  {
-    "content": "PlanWorkspace: removed cross-step Prev/Next bar ✅",
-    "status": "completed"
+    "content": "Update plan.md with M229 status",
+    "status": "pending"
   }
 ]

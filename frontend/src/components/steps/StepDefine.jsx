@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Building2, Compass, Target, Heart, Loader2, Check, Image as ImgIcon, BookOpen, ArrowRight, ArrowLeft, ChevronRight } from "lucide-react";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import {
     DRIVEN_QUESTIONS, MTP_CATEGORIES, SEVEN_LEVELS_DEEP,
-    CHIEF_AIM_PROMPTS, CHIEF_AIM_HORIZONS, BUSINESS_STRUCTURES,
+    CHIEF_AIM_PROMPTS, CHIEF_AIM_HORIZONS, CHIEF_AIM_QUOTE, BUSINESS_STRUCTURES,
     FINDING_PURPOSE_QUESTIONS, FINDING_PURPOSE_PRIORITIES, NAPOLEON_HILL_LEARN_MORE,
     BECOME_DRIVEN_QUOTE, BECOME_DRIVEN_LEARN_MORE,
     MTP_CHURCHILL_QUOTE, MTP_LEARN_MORE, MTP_KEY_ASPECTS, MTP_EXAMPLES
@@ -643,35 +643,115 @@ function MTPSection({ planId, getInput, setInput }) {
     );
 }
 
-// =================== DEEP WHY ===================
+// =================== DEEP WHY (Progressive Reveal) ===================
 function DeepWhySection({ planId, getInput, setInput }) {
-    const levels = [1, 2, 3, 4, 5, 6, 7];
+    const mtp = getInput(1, "mtp_statement") || "";
+
+    // Initialize starter from MTP once (only if user hasn't already saved their own).
+    useEffect(() => {
+        const cur = getInput(1, "why_starter");
+        if (!cur && mtp) {
+            setInput(1, "why_starter", mtp);
+            authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "why_starter", value: mtp }) });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const revealedStr = getInput(1, "why_revealed_level");
+    const revealed = Math.max(0, Math.min(7, parseInt(revealedStr || "0", 10) || 0));
+    const [genBusy, setGenBusy] = useState(false);
+
+    function persistRevealed(n) {
+        setInput(1, "why_revealed_level", String(n));
+        authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 1, field_key: "why_revealed_level", value: String(n) }) });
+    }
+
+    async function generateNextQuestion(nextLevel) {
+        const prevAnswer = nextLevel === 1
+            ? (getInput(1, "why_starter") || "")
+            : (getInput(1, `why_level_${nextLevel - 1}`) || "");
+        if (!prevAnswer.trim()) {
+            toast.error(nextLevel === 1 ? "Edit the starter prompt first." : `Answer Level ${nextLevel - 1} before continuing.`);
+            return;
+        }
+        // If a question already exists, just reveal and return
+        const existingQ = getInput(1, `why_question_${nextLevel}`);
+        if (existingQ) { persistRevealed(nextLevel); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); return; }
+
+        setGenBusy(true);
+        try {
+            await streamingGenerate({
+                field_key: `why_question_${nextLevel}`,
+                field_label: `Generate Why-question for Level ${nextLevel}`,
+                extra_context: { previous_answer: prevAnswer, level: nextLevel },
+                instructions:
+                    "You are guiding a 7 Levels Deep WHY cascade. Read the user's previous answer below. " +
+                    "Write a single short question (ONE sentence, no preamble, no quotes) that asks WHY the previous answer matters — reworded in fresh, specific language drawn from their own words. " +
+                    "Examples of style: “Why does that freedom matter to you?”, “Why is it important that your clients feel seen?”. " +
+                    "Return ONLY the single question.",
+                planId, stepNum: 1, mode: "generate",
+                onText: (t) => setInput(1, `why_question_${nextLevel}`, t)
+            });
+            persistRevealed(nextLevel);
+            setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 250);
+        } finally { setGenBusy(false); }
+    }
+
     return (
         <Section eyebrow="7 Levels Deep WHY" title="Find your real WHY." helper={SEVEN_LEVELS_DEEP.intro}>
             <div>
-                <div className="font-serif text-lg mb-2">Starter prompt</div>
-                <AIAssistInput planId={planId} stepNum={1} fieldKey="why_starter" fieldLabel={SEVEN_LEVELS_DEEP.starterPrompt}
+                <div className="font-serif text-lg mb-1">Starter prompt</div>
+                <p className="text-xs text-muted-foreground mb-3">We’ve seeded this with your MTP. Edit as needed before beginning the cascade.</p>
+                <AIAssistInput planId={planId} stepNum={1} fieldKey="why_starter" fieldLabel="Starter prompt (begin from your MTP)" subModule="7 Levels Deep WHY"
                     rows={3}
-                    value={getInput(1, "why_starter")} onChange={(v) => setInput(1, "why_starter", v)}
-                    placeholder="e.g. Building a wellness practice that gives me freedom to choose my schedule…" />
-                <div className="gold-divider my-7" />
-                <div className="space-y-5">
-                    {levels.map((lv) => (
-                        <div key={lv} className="editorial-card p-5">
-                            <div className="label-eyebrow text-brand-bronze mb-2">Level {lv}</div>
-                            <div className="font-serif text-base mb-2">Why is that important?</div>
-                            <AIAssistInput planId={planId} stepNum={1} fieldKey={`why_level_${lv}`} fieldLabel={`Level ${lv}: Why is that important?`} subModule="7 Levels Deep WHY"
-                                rows={2}
-                                value={getInput(1, `why_level_${lv}`)} onChange={(v) => setInput(1, `why_level_${lv}`, v)} />
+                    placeholder={mtp ? "" : "Tip: synthesize your MTP first on the previous tab, then come back."}
+                    value={getInput(1, "why_starter")} onChange={(v) => setInput(1, "why_starter", v)} />
+
+                {revealed < 1 && (
+                    <div className="mt-5 flex justify-end">
+                        <Button onClick={() => generateNextQuestion(1)} disabled={genBusy} className="cta-red rounded-full h-11 px-5" data-testid="why-next-level-1-button">
+                            {genBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Next: Begin Level 1 <ChevronRight className="h-4 w-4 ml-1" /></>}
+                        </Button>
+                    </div>
+                )}
+
+                {Array.from({ length: 7 }, (_, i) => i + 1).filter((lv) => lv <= revealed).map((lv) => {
+                    const isLast = lv === 7;
+                    const question = getInput(1, `why_question_${lv}`) || "Why is that important?";
+                    const answered = (getInput(1, `why_level_${lv}`) || "").trim().length > 0;
+                    const isFinal = lv === revealed;
+                    return (
+                        <div key={lv} className="editorial-card p-5 mt-5" data-testid={`why-level-${lv}-card`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="label-eyebrow text-brand-bronze">Level {lv}{isLast && " — Big Why"}</div>
+                                {answered && <Check className="h-3.5 w-3.5 text-brand-gold" />}
+                            </div>
+                            <div className="font-serif text-lg mb-3" data-testid={`why-level-${lv}-question`}>{question}</div>
+                            <AIAssistInput planId={planId} stepNum={1} fieldKey={`why_level_${lv}`} fieldLabel={question} subModule="7 Levels Deep WHY"
+                                rows={isLast ? 4 : 2}
+                                placeholder={isLast ? "Your Big Why — the truth that lives beneath everything." : "Because\u2026"}
+                                value={getInput(1, `why_level_${lv}`)} onChange={(v) => {
+                                    setInput(1, `why_level_${lv}`, v);
+                                    if (isLast) setInput(1, "deep_why", v);
+                                }} />
+
+                            {isFinal && !isLast && (
+                                <div className="mt-4 flex justify-end">
+                                    <Button onClick={() => generateNextQuestion(lv + 1)} disabled={genBusy || !answered} className="cta-red rounded-full h-10 px-5" data-testid={`why-next-level-${lv + 1}-button`}>
+                                        {genBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Next: Level {lv + 1} <ChevronRight className="h-4 w-4 ml-1" /></>}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                    ))}
-                </div>
-                <div className="gold-divider my-7" />
-                <div className="font-serif text-lg mb-2">Your distilled Deep WHY (one sentence)</div>
-                <AIAssistInput planId={planId} stepNum={1} fieldKey="deep_why" fieldLabel="Distilled Deep WHY (one sentence)" subModule="7 Levels Deep WHY"
-                    rows={2}
-                    placeholder="Because…"
-                    value={getInput(1, "deep_why")} onChange={(v) => setInput(1, "deep_why", v)} />
+                    );
+                })}
+
+                {revealed >= 7 && (getInput(1, "why_level_7") || "").trim() && (
+                    <div className="mt-7 dark-cinematic-panel p-7 md:p-8">
+                        <div className="label-eyebrow text-brand-gold mb-2">Your Big Why</div>
+                        <div className="font-serif text-2xl md:text-3xl italic leading-snug" data-testid="big-why-output">“{getInput(1, "why_level_7")}”</div>
+                    </div>
+                )}
             </div>
         </Section>
     );
@@ -679,12 +759,32 @@ function DeepWhySection({ planId, getInput, setInput }) {
 
 // =================== CHIEF AIM ===================
 function ChiefAimSection({ planId, getInput, setInput }) {
+    const mtp = getInput(1, "mtp_statement") || "";
     return (
-        <Section eyebrow="Definite Chief Aim" title="Your aim, in writing." helper="Answer the four prompts for each horizon: 1 year, 3 years, 5 years.">
-            <div className="space-y-8">
+        <Section eyebrow="Definite Chief Aim" title="Your aim, in writing." helper="Set High Hard Goals at four horizons: 3 months, 1 year, 3 years, 5 years.">
+            {/* MTP read-only banner */}
+            <div className="editorial-card p-5 mb-6 bg-secondary/40" data-testid="chief-mtp-banner">
+                <div className="label-eyebrow text-brand-bronze mb-1">Your MTP</div>
+                {mtp ? (
+                    <div className="font-serif text-xl italic leading-snug">“{mtp}”</div>
+                ) : (
+                    <p className="text-sm text-muted-foreground italic">Synthesize your MTP on the MTP Discovery tab first — your Chief Aim should serve it.</p>
+                )}
+            </div>
+
+            {/* Dr Brandt Gibson quote */}
+            <figure className="my-5">
+                <blockquote className="font-serif text-xl md:text-2xl italic leading-snug text-foreground/90 pl-6 border-l-2 border-brand-gold" data-testid="brandt-gibson-quote">
+                    “{CHIEF_AIM_QUOTE.text}”
+                </blockquote>
+                <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— {CHIEF_AIM_QUOTE.attribution}</figcaption>
+            </figure>
+
+            <div className="space-y-8 mt-7">
                 {CHIEF_AIM_HORIZONS.map((h) => (
-                    <div key={h.key} className="editorial-card p-6">
-                        <div className="font-serif text-2xl mb-1">{h.label}</div>
+                    <div key={h.key} className="editorial-card p-6" data-testid={`chief-horizon-${h.key}`}>
+                        <div className="font-serif text-2xl">{h.label}</div>
+                        {h.helper && <p className="text-xs text-muted-foreground mt-1">{h.helper}</p>}
                         <div className="gold-divider my-3" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {CHIEF_AIM_PROMPTS.map((p) => (

@@ -239,10 +239,16 @@ export const CHIEF_AIM_PROMPTS = [
 ];
 
 export const CHIEF_AIM_HORIZONS = [
-    { key: "y1", label: "1-Year Aim" },
-    { key: "y3", label: "3-Year Aim" },
-    { key: "y5", label: "5-Year Aim" }
+    { key: "q3", label: "3-Month Goal", helper: "Your nearest-horizon win — within the next quarter." },
+    { key: "y1", label: "1-Year Goal", helper: "Where you intend to be 12 months from now." },
+    { key: "y3", label: "3-Year Goal", helper: "The medium-term horizon that compounds your work." },
+    { key: "y5", label: "5-Year Goal", helper: "The long-arc transformation you are building toward." }
 ];
+
+export const CHIEF_AIM_QUOTE = {
+    text: "The most effective method to reaching your Massive Transformative Purpose is to create steps (High Hard Goals) that move you closer to the desired final result.",
+    attribution: "Dr Brandt Gibson"
+};
 
 export const BUSINESS_STRUCTURES = [
     { key: "sole_prop", name: "Sole Proprietorship", best: "Solo, very early, low risk, simple income" },
