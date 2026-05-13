@@ -237,7 +237,7 @@ function StoryBank({ planId, getInput, setInput }) {
     );
 }
 
-// =================== HERO'S JOURNEY — image-anchored ===================
+// =================== HERO'S JOURNEY — image-anchored with wedge highlights ===================
 function HeroJourney({ planId, getInput, setInput }) {
     const [persona, setPersona] = useState("founder");
     const keyFor = (stage) => `${stage.key}__${persona}`;
@@ -262,7 +262,10 @@ function HeroJourney({ planId, getInput, setInput }) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
                 <div className="lg:col-span-5">
                     <div className="editorial-card p-3 sticky top-32" data-testid="hj-image-card">
-                        <img src={HEROS_JOURNEY_IMAGE} alt="The Hero's Journey — 12 stages" className="w-full h-auto rounded-md" data-testid="hj-image" />
+                        <HeroJourneyImageWithOverlay
+                            stages={HEROS_JOURNEY_STAGES}
+                            isFilled={(s) => (getInput(STEP_NUM, keyFor(s)) || "").trim().length > 0}
+                        />
                         <p className="text-[11px] text-muted-foreground text-center mt-2">© 2023 Dr. Brandt R. Gibson</p>
                     </div>
                 </div>
@@ -285,6 +288,75 @@ function HeroJourney({ planId, getInput, setInput }) {
                 </div>
             </div>
         </Section>
+    );
+}
+
+/**
+ * HeroJourneyImageWithOverlay
+ * Renders the Hero's Journey artwork with a 13-wedge SVG overlay aligned to the wheel.
+ * Wedges are each 27.69° (= 360° / 13). Wedge 1 is centered at NORTH (12 o'clock), then
+ * clockwise through wedge 13. Wedges 1–12 highlight gold when the matching stage field
+ * is filled; wedge 13 stays decorative.
+ */
+function HeroJourneyImageWithOverlay({ stages, isFilled }) {
+    const cx = 50, cy = 50;
+    const rInner = 21;   // inside the inner mentor disc
+    const rOuter = 49;   // close to the visible outer ring
+    const NUM = 13;
+    const wedgeDeg = 360 / NUM; // ~27.6923°
+
+    // SVG coordinate convention: 0° points east. We want wedge 1 centered at north,
+    // so we offset by -90° (= 270°) and rotate clockwise.
+    function wedgePath(idx /* 1-indexed */) {
+        const centerSvg = (idx - 1) * wedgeDeg - 90; // degrees
+        const startSvg = centerSvg - wedgeDeg / 2;
+        const endSvg = centerSvg + wedgeDeg / 2;
+        const sa = (startSvg * Math.PI) / 180;
+        const ea = (endSvg * Math.PI) / 180;
+        const x1 = cx + rOuter * Math.cos(sa);
+        const y1 = cy + rOuter * Math.sin(sa);
+        const x2 = cx + rOuter * Math.cos(ea);
+        const y2 = cy + rOuter * Math.sin(ea);
+        const x3 = cx + rInner * Math.cos(ea);
+        const y3 = cy + rInner * Math.sin(ea);
+        const x4 = cx + rInner * Math.cos(sa);
+        const y4 = cy + rInner * Math.sin(sa);
+        return `M ${x1} ${y1} A ${rOuter} ${rOuter} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${rInner} ${rInner} 0 0 0 ${x4} ${y4} Z`;
+    }
+
+    return (
+        <div className="relative" data-testid="hj-overlay-wrap">
+            <img src={HEROS_JOURNEY_IMAGE} alt="The Hero's Journey — 12 stages" className="w-full h-auto rounded-md block" data-testid="hj-image" />
+            <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                aria-hidden="true"
+                data-testid="hj-overlay-svg"
+            >
+                <defs>
+                    <radialGradient id="hj-wedge-active" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%"   stopColor="rgb(212, 175, 55)" stopOpacity="0.55" />
+                        <stop offset="100%" stopColor="rgb(212, 175, 55)" stopOpacity="0.30" />
+                    </radialGradient>
+                </defs>
+                {Array.from({ length: NUM }, (_, i) => {
+                    const idx = i + 1; // 1..13
+                    const stage = stages[i]; // stage 1..12 maps to wedges 1..12; wedge 13 is decorative
+                    const active = stage ? isFilled(stage) : false;
+                    return (
+                        <path
+                            key={idx}
+                            d={wedgePath(idx)}
+                            fill={active ? "url(#hj-wedge-active)" : "transparent"}
+                            stroke={active ? "rgba(212,175,55,0.9)" : "transparent"}
+                            strokeWidth={active ? 0.4 : 0}
+                            data-testid={`hj-wedge-${idx}${active ? "-active" : ""}`}
+                        />
+                    );
+                })}
+            </svg>
+        </div>
     );
 }
 
