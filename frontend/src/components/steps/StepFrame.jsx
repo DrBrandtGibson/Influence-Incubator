@@ -301,7 +301,7 @@ function HeroJourney({ planId, getInput, setInput }) {
 function HeroJourneyImageWithOverlay({ stages, isFilled }) {
     const cx = 50, cy = 50;
     const rInner = 21;   // inside the inner mentor disc
-    const rOuter = 51;   // extends just past the wheel rim to cover each stage thumbnail
+    const rOuter = 50;   // matches the wheel rim
     const NUM = 12;
     const wedgeDeg = 360 / NUM; // 30°
 
