@@ -349,8 +349,9 @@ function HeroJourneyImageWithOverlay({ stages, isFilled }) {
                             key={idx}
                             d={wedgePath(idx)}
                             fill={active ? "url(#hj-wedge-active)" : "transparent"}
-                            stroke="rgba(200, 50, 45, 0.95)"
-                            strokeWidth={active ? 0.7 : 0.5}
+                            stroke={active ? "rgba(20, 16, 12, 0.95)" : "transparent"}
+                            strokeWidth={active ? 1.2 : 0}
+                            strokeLinejoin="round"
                             vectorEffect="non-scaling-stroke"
                             data-testid={`hj-wedge-${idx}${active ? "-active" : ""}`}
                         />
