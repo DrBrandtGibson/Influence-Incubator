@@ -278,14 +278,28 @@ For each step 5–7:
 
 ---
 
-### Phase 10 — Polish + Exports + Testing Hardening 🔜 UPCOMING
-- PDF export
-  - Free: Steps 1–2 only + watermark.
-  - Pro: full plan clean PDF.
-- Word export (docx): Pro only.
-- Add onboarding tour, accessibility pass (WCAG AA), rate limiting.
-- Increase test coverage (Playwright/Vitest) for critical flows.
-- Add regression checks for persistence (debounced saves + AI output persistence).
+### Phase 10 — Polish + Exports + Testing Hardening ✅ EXPORTS COMPLETE
+**Status:** PDF + Word export end-to-end working. Free tier sees watermarked PDF preview; DOCX is Pro-only.
+
+**Wiring / Files:**
+- Backend router: `backend/routers/exports.py`
+  - `GET /api/plans/{plan_id}/export.pdf` (Free → watermark; Pro → clean)
+  - `GET /api/plans/{plan_id}/export.docx` (Pro only; returns 402 with `code=pro_required` for free users)
+  - Uses `reportlab` + `python-docx`, brand palette (charcoal/bronze/cream), cover + 7 step sections, structured renderers for Step 3 offers, Step 4 archetype/palette/typography, Step 5 framework/SaaS/community, Step 6 Dream 100 + book, Step 7 journey/onboarding/retention.
+  - Pro access enforced via `access.has_pro_access(profile)`.
+- Server wiring: `backend/server.py` now includes `exports_router`.
+- Frontend menu: `frontend/src/components/plans/ExportMenu.jsx`
+  - Shadcn `DropdownMenu` with PDF + DOCX options, contextual labels per tier, lock icon for free.
+  - Auth-aware blob download via `authedFetch`, filename sanitization, success + 402 upsell toasts (with "Upgrade" action navigating to `/pricing`).
+- Workspace integration: `frontend/src/pages/PlanWorkspace.jsx` shows `<ExportMenu />` in the sticky top bar next to the mobile Steps trigger.
+
+**Verified end-to-end:**
+- Pro user → PDF (7.7 KB, valid `%PDF-`) and DOCX (37 KB, valid `PK` zip) downloaded with success toasts.
+- Free user → PDF (9.2 KB, watermarked) downloaded with "Free preview includes watermark" toast; DOCX click triggers Pro upsell toast (402 → Upgrade CTA).
+
+**Remaining (deferred):**
+- Onboarding tour, WCAG AA pass, rate limiting.
+- Playwright/Vitest regression coverage for persistence + AI streams.
 
 ---
 

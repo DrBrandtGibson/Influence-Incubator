@@ -1,18 +1,26 @@
 [
   {
-    "content": "Step 7 framework constants",
+    "content": "Register exports router in server.py",
     "status": "completed"
   },
   {
-    "content": "Create StepDeliver.jsx (6 tabs)",
+    "content": "Test backend export endpoints (PDF + DOCX) with curl",
     "status": "completed"
   },
   {
-    "content": "Wire StepDeliver into PlanWorkspace",
+    "content": "Build ExportMenu component (PDF + Word download with Pro gating)",
     "status": "completed"
   },
   {
-    "content": "Lint + smoke test",
+    "content": "Integrate ExportMenu into PlanWorkspace top bar",
+    "status": "completed"
+  },
+  {
+    "content": "End-to-end frontend test via screenshot",
+    "status": "completed"
+  },
+  {
+    "content": "Update plan.md to mark Phase 10 complete",
     "status": "completed"
   }
 ]

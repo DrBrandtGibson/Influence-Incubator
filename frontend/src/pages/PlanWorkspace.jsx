@@ -17,6 +17,7 @@ import StepIgnite from "@/components/steps/StepIgnite";
 import StepNurture from "@/components/steps/StepNurture";
 import StepExpand from "@/components/steps/StepExpand";
 import StepDeliver from "@/components/steps/StepDeliver";
+import { ExportMenu } from "@/components/plans/ExportMenu";
 
 export default function PlanWorkspace() {
     const { planId, stepKey } = useParams();
@@ -108,16 +109,19 @@ export default function PlanWorkspace() {
                             <span>/</span>
                             <span>Step {currentStep.num} · {currentStep.short}</span>
                         </div>
-                        <Sheet>
-                            <SheetTrigger asChild>
-                                <Button variant="outline" size="sm" className="lg:hidden" data-testid="mobile-steps-trigger">Steps</Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-[300px] p-0 bg-brand-charcoal text-brand-cream">
-                                <div className="pt-4">
-                                    <StepNavigatorMobile planId={planId} currentStepNum={currentStep.num} stepStatuses={stepStatuses} onClickStep={gotoStep} />
-                                </div>
-                            </SheetContent>
-                        </Sheet>
+                        <div className="flex items-center gap-2">
+                            <ExportMenu planId={planId} planTitle={plan.title} />
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button variant="outline" size="sm" className="lg:hidden" data-testid="mobile-steps-trigger">Steps</Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-[300px] p-0 bg-brand-charcoal text-brand-cream">
+                                    <div className="pt-4">
+                                        <StepNavigatorMobile planId={planId} currentStepNum={currentStep.num} stepStatuses={stepStatuses} onClickStep={gotoStep} />
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </div>
                 </div>
 
