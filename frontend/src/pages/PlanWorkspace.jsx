@@ -16,6 +16,7 @@ import StepFrame from "@/components/steps/StepFrame";
 import StepIgnite from "@/components/steps/StepIgnite";
 import StepNurture from "@/components/steps/StepNurture";
 import StepExpand from "@/components/steps/StepExpand";
+import StepDeliver from "@/components/steps/StepDeliver";
 
 export default function PlanWorkspace() {
     const { planId, stepKey } = useParams();
@@ -150,6 +151,7 @@ function StepRouter({ stepKey, plan, getInput, setInput, markStepStatus, gotoSte
     if (stepKey === "ignite") return <StepIgnite {...common} />;
     if (stepKey === "nurture") return <StepNurture {...common} />;
     if (stepKey === "expand") return <StepExpand {...common} />;
+    if (stepKey === "deliver") return <StepDeliver {...common} />;
     return <ComingSoon stepKey={stepKey} />;
 }
 

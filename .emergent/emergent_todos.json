@@ -1,34 +1,14 @@
 [
   {
-    "content": "Step 5 — DIY vs AI Build toggle",
+    "content": "Step 7 framework constants",
     "status": "completed"
   },
   {
-    "content": "Phase 8 Step 6 framework constants",
+    "content": "Create StepDeliver.jsx (6 tabs)",
     "status": "completed"
   },
   {
-    "content": "Create StepExpand.jsx with 4 tabs",
-    "status": "completed"
-  },
-  {
-    "content": "Build Dream 100 CRM",
-    "status": "completed"
-  },
-  {
-    "content": "Build Live Events & Challenges",
-    "status": "completed"
-  },
-  {
-    "content": "Build Book Builder",
-    "status": "completed"
-  },
-  {
-    "content": "Build Output card",
-    "status": "completed"
-  },
-  {
-    "content": "Wire StepExpand into PlanWorkspace",
+    "content": "Wire StepDeliver into PlanWorkspace",
     "status": "completed"
   },
   {

@@ -693,3 +693,38 @@ export const EXPAND_QUOTE = {
     attribution: "Porter Gale"
 };
 
+
+// ============ STEP 7 — DELIVER Exceptional Service ============
+
+export const DELIVER_JOURNEY_PROMPTS = [
+    { key: "dj_first_touch",   label: "First touch",        helper: "How they first hear about you. The hook that earned their attention." },
+    { key: "dj_decision",      label: "Decision moment",    helper: "The specific moment they decide to trust you with their money or time." },
+    { key: "dj_first_24h",     label: "First 24 hours",     helper: "What lands in their inbox / hands the moment they say yes." }
+];
+
+export const DELIVER_QUALITY_PROMPTS = [
+    { key: "dq_response_sla",   label: "Response SLA",       helper: "How quickly people hear back from you (or your team) by channel — email, DM, billing, support, urgent." },
+    { key: "dq_content_bar",    label: "Content quality bar", helper: "The standard every piece of content / deliverable must meet before it ships." },
+    { key: "dq_communication",  label: "Communication standards", helper: "Tone, frequency, transparency. How you communicate when things are great, and when they aren't." }
+];
+
+export const DELIVER_FEEDBACK_PROMPTS = [
+    { key: "df_nps_cadence",     label: "NPS / Pulse cadence", helper: "When and how you'll measure how people actually feel. (e.g. NPS at day 30, day 90, day 180.)" },
+    { key: "df_testimonial_loop", label: "Testimonial loop",  helper: "The systematic way you capture and publish wins — and ask for the next ones." },
+    { key: "df_complaint_response", label: "Complaint response", helper: "How a complaint becomes a chance to deepen trust. Who handles it, in what timeframe, with what authority." },
+    { key: "df_improvement_ritual", label: "Improvement ritual", helper: "The recurring meeting/review where the team reads feedback and changes the product." }
+];
+
+export const DELIVER_INTROS = {
+    journey:     "The customer journey is the river they paddle from stranger to advocate. Map it once, on purpose, and every decision after gets easier. Every gap on the map costs you customers.",
+    onboarding:  "The first 30 days set the rest of the relationship. A deliberate onboarding sequence dramatically reduces churn, accelerates the first 'win', and creates the testimonial you'll quote for years.",
+    retention:   "Surprise-and-delight is the cheapest, most leveraged marketing you have. A handwritten card costs $2 and earns referrals for life. Codify your moves so they don't depend on remembering.",
+    quality:     "Standards are how love scales. Without explicit standards, quality drifts. With them, anyone you ever hire can match the bar.",
+    feedback:    "Without a feedback loop you are flying blind. With it, every customer becomes a co-creator of v2. Decide now how you'll hear them — and what happens when you do."
+};
+
+export const DELIVER_QUOTE = {
+    text: "Make a customer, not a sale.",
+    attribution: "Katherine Barchetti"
+};
+
