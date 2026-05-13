@@ -341,16 +341,17 @@ function HeroJourneyImageWithOverlay({ stages, isFilled }) {
                     </radialGradient>
                 </defs>
                 {Array.from({ length: NUM }, (_, i) => {
-                    const idx = i + 1; // 1..13
-                    const stage = stages[i]; // stage 1..12 maps to wedges 1..12; wedge 13 is decorative
+                    const idx = i + 1; // 1..12
+                    const stage = stages[i];
                     const active = stage ? isFilled(stage) : false;
                     return (
                         <path
                             key={idx}
                             d={wedgePath(idx)}
                             fill={active ? "url(#hj-wedge-active)" : "transparent"}
-                            stroke={active ? "rgba(212,175,55,0.9)" : "transparent"}
-                            strokeWidth={active ? 0.4 : 0}
+                            stroke="rgba(200, 50, 45, 0.95)"
+                            strokeWidth={active ? 0.7 : 0.5}
+                            vectorEffect="non-scaling-stroke"
                             data-testid={`hj-wedge-${idx}${active ? "-active" : ""}`}
                         />
                     );
