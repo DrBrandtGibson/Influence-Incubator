@@ -302,8 +302,8 @@ function HeroJourneyImageWithOverlay({ stages, isFilled }) {
     const cx = 50, cy = 50;
     const rInner = 21;   // inside the inner mentor disc
     const rOuter = 49;   // close to the visible outer ring
-    const NUM = 13;
-    const wedgeDeg = 360 / NUM; // ~27.6923°
+    const NUM = 12;
+    const wedgeDeg = 360 / NUM; // 30°
 
     // SVG coordinate convention: 0° points east. We want wedge 1 centered at north,
     // so we offset by -90° (= 270°) and rotate clockwise.

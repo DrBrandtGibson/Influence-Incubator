@@ -586,3 +586,50 @@ export const IGNITE_JUNG_QUOTE = {
     attribution: "Carl Jung"
 };
 
+
+// ============ STEP 5 — NURTURE The Transformation ============
+
+// ---- Transformative Framework — questions seeded for the AI builder ----
+export const FRAMEWORK_SEED_QUESTIONS = [
+    { key: "fw_who",       label: "Who you're transforming",            helper: "In one sentence, name the person and the state you find them in." },
+    { key: "fw_from",      label: "Their starting state",               helper: "The before. What life, work, or self looks like when they first arrive." },
+    { key: "fw_to",        label: "Their ending state",                 helper: "The after. What's true once they've completed the journey with you." },
+    { key: "fw_phases_n",  label: "How many phases feel right? (3–7)", helper: "Most signature frameworks land between 3 and 7 phases. Trust your gut." }
+];
+
+// ---- Continuity Program prompts ----
+export const CONTINUITY_PROMPTS = [
+    { key: "cp_name",          label: "Program Name",        helper: "What you'll call it on the order page. (Or click 'Suggest names' for ideas.)" },
+    { key: "cp_what_monthly",  label: "What members get (monthly)",  helper: "The recurring deliverable. Be specific: ‘1 group call + 2 office hours + new playbook’." },
+    { key: "cp_price",         label: "Price Point",         helper: "Monthly price (and annual price if offered)." },
+    { key: "cp_retention_hook", label: "Retention Hook",     helper: "The single reason members renew month after month — beyond habit." },
+    { key: "cp_churn_rituals", label: "Churn-Prevention Rituals", helper: "Specific rituals you'll run: onboarding sequence, win-of-the-week post, anniversary call, etc." }
+];
+
+// ---- SaaS Opportunity prompts ----
+export const SAAS_INPUT_PROMPTS = [
+    { key: "saas_painful_step", label: "Slowest, most painful manual step in your method", helper: "The 5–60 minute task you do over and over for every client. The bottleneck." },
+    { key: "saas_who_loses_sleep", label: "Who loses sleep over this problem", helper: "The exact persona who would pay to never deal with this manually again." },
+    { key: "saas_current_workaround", label: "Current workaround", helper: "What people do today — spreadsheets, Notion, hiring an assistant, etc." }
+];
+
+// ---- Community Design prompts ----
+export const COMMUNITY_INPUT_PROMPTS = [
+    { key: "com_identity",   label: "Shared identity",       helper: "The single label members would proudly wear. ‘Recovering perfectionists.’ ‘Functional medicine providers.’" },
+    { key: "com_problem",    label: "Problem that brings them together", helper: "The shared ache that nothing else solves." },
+    { key: "com_success",    label: "What success looks like for a member", helper: "The win every member is quietly hoping for." }
+];
+
+// ---- Intros / Copy ----
+export const NURTURE_INTROS = {
+    framework:   "Your Transformative Framework is the named, ownable method underneath every offer you make. Once it's named and visualized, every piece of marketing, every video, every keynote can reference it as a single artifact.",
+    continuity:  "Continuity is your gravity. A subscription program that pulls people closer over time, deepens transformation, and provides reliable monthly revenue. The single most important asset you can build for stability.",
+    saas:        "Some of what you teach can be productized. Where in your method is the manual, repeatable step that a software tool could collapse from hours to minutes? That's where a SaaS opportunity lives.",
+    community:   "A community is the multiplier on your work. We'll design yours anchored in the ClickFunnels Communities structure — rooms, rituals, and rhythms that make members crave the next gathering."
+};
+
+export const NURTURE_QUOTE = {
+    text: "Take care of your customers, and they will take care of you.",
+    attribution: "Russell Brunson"
+};
+
