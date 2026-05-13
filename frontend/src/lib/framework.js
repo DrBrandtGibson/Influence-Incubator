@@ -340,33 +340,111 @@ export const BRAND_VOICE_PROMPTS = [
     { key: "bv_q10", q: "Name 1–3 writers, podcasters, or speakers whose voice resonates with you. What about their voice specifically?" }
 ];
 
-// ---- Story Bank (user-provided 9 prompt categories) ----
+// ---- Story Bank (user-provided 9 categories, each with sub-questions) ----
 export const STORY_BANK_PROMPTS = [
-    { key: "sb_early_life",       label: "Early Life",          helper: "What did your life look like? What are some important stories from this life?" },
-    { key: "sb_difficulties",     label: "Difficulties",        helper: "What difficulties have you had in life? What bad habits did you have? What were you unable to overcome? What does nobody know about that time?" },
-    { key: "sb_embarrassing",     label: "Embarrassing Moments", helper: "What did you do? What are you not proud of? What did you hide? What have you never told anyone?" },
-    { key: "sb_failures",         label: "Previous Failures",   helper: "What did you already try? What help were you looking for? What did you spend? What did you try that failed?" },
-    { key: "sb_early_successes",  label: "Your Successes",      helper: "What did you experience? What did you learn? What were your pivotal moments?" },
-    { key: "sb_new_approach",     label: "New Approach",        helper: "How did you change your approach? How did your philosophy change? How did your actions change? How did you change?" },
-    { key: "sb_misconceptions",   label: "Misconceptions",      helper: "What lies did you uncover? What were the truths you exposed? What is the right way vs. the wrong way?" },
-    { key: "sb_transformation",   label: "Transformation",      helper: "What changes did you see initially? What progress are you having? What were the first achieved goals?" },
-    { key: "sb_bragging_rights",  label: "Bragging Rights",     helper: "How can you collapse time for others? What success have you achieved? How does life look different now? What are your bragging rights?" }
+    {
+        key: "sb_early_life", label: "Early Life", short: "Early Life",
+        intro: "Set the scene of where you came from. The texture of those years carries the seeds of everything that came later.",
+        questions: [
+            { key: "q1", q: "What did your life look like?" },
+            { key: "q2", q: "What are some important stories from this life?" }
+        ]
+    },
+    {
+        key: "sb_difficulties", label: "Difficulties", short: "Difficulties",
+        intro: "The chapters that hurt. Naming them honestly is how they become useful.",
+        questions: [
+            { key: "q1", q: "What difficulties have you had in life?" },
+            { key: "q2", q: "What bad habits did you have?" },
+            { key: "q3", q: "What were you unable to overcome?" },
+            { key: "q4", q: "What does nobody know about that time?" }
+        ]
+    },
+    {
+        key: "sb_embarrassing", label: "Embarrassing Moments", short: "Embarrassing",
+        intro: "The moments you'd rather not remember. The ones that, when shared honestly, build the most trust.",
+        questions: [
+            { key: "q1", q: "What did you do?" },
+            { key: "q2", q: "What are you not proud of?" },
+            { key: "q3", q: "What did you hide?" },
+            { key: "q4", q: "What have you never told anyone?" }
+        ]
+    },
+    {
+        key: "sb_failures", label: "Previous Failures", short: "Failures",
+        intro: "Before the breakthrough, there were attempts. Map them honestly.",
+        questions: [
+            { key: "q1", q: "What did you already try?" },
+            { key: "q2", q: "What help were you looking for?" },
+            { key: "q3", q: "What did you spend?" },
+            { key: "q4", q: "What did you try that failed?" }
+        ]
+    },
+    {
+        key: "sb_early_successes", label: "Your Successes", short: "Successes",
+        intro: "Even before the big shift, there were wins worth remembering.",
+        questions: [
+            { key: "q1", q: "What did you experience?" },
+            { key: "q2", q: "What did you learn?" },
+            { key: "q3", q: "What were your pivotal moments?" }
+        ]
+    },
+    {
+        key: "sb_new_approach", label: "New Approach", short: "New Approach",
+        intro: "The shift. What changed in how you saw things — and how you acted.",
+        questions: [
+            { key: "q1", q: "How did you change your approach?" },
+            { key: "q2", q: "How did your philosophy change?" },
+            { key: "q3", q: "How did your actions change?" },
+            { key: "q4", q: "How did you change?" }
+        ]
+    },
+    {
+        key: "sb_misconceptions", label: "Misconceptions", short: "Misconceptions",
+        intro: "The lies you uncovered. The truths you can now teach.",
+        questions: [
+            { key: "q1", q: "What lies did you uncover?" },
+            { key: "q2", q: "What were the truths you exposed?" },
+            { key: "q3", q: "What is the right way vs. the wrong way?" }
+        ]
+    },
+    {
+        key: "sb_transformation", label: "Transformation", short: "Transformation",
+        intro: "The visible change. The first proof that the new way worked.",
+        questions: [
+            { key: "q1", q: "What changes did you see initially?" },
+            { key: "q2", q: "What progress are you having?" },
+            { key: "q3", q: "What were the first achieved goals?" }
+        ]
+    },
+    {
+        key: "sb_bragging_rights", label: "Bragging Rights", short: "Bragging",
+        intro: "The current view. What life looks like now — and what you can save others years of.",
+        questions: [
+            { key: "q1", q: "How can you collapse time for others?" },
+            { key: "q2", q: "What success have you achieved?" },
+            { key: "q3", q: "How does life look different now?" },
+            { key: "q4", q: "What are your bragging rights?" }
+        ]
+    }
 ];
 
-// ---- Hero's Journey (12 classical stages, distilled for entrepreneurs) ----
+// ---- Hero's Journey (Dr. Gibson 12-stage map; image-anchored) ----
+export const HEROS_JOURNEY_IMAGE = "https://customer-assets.emergentagent.com/job_pro-unlock-3/artifacts/u640eo37_The%20Hero%27s%20Journey.png";
+
 export const HEROS_JOURNEY_STAGES = [
-    { key: "hj_01_ordinary_world",   stage: 1,  label: "The Ordinary World",      helper: "Life before the journey began. The familiar — and the quiet ache underneath it." },
-    { key: "hj_02_call",             stage: 2,  label: "The Call to Adventure",   helper: "The moment that broke the routine. The invitation, problem, or rupture you could not ignore." },
-    { key: "hj_03_refusal",          stage: 3,  label: "Refusal of the Call",     helper: "The hesitation. The reasons you nearly stayed put. Fear, doubt, comfort." },
-    { key: "hj_04_mentor",           stage: 4,  label: "Meeting the Mentor",      helper: "The teacher, book, person or moment that gave you courage and a first map." },
-    { key: "hj_05_threshold",        stage: 5,  label: "Crossing the Threshold",  helper: "The first irreversible step. The day you committed and there was no going back." },
-    { key: "hj_06_tests",            stage: 6,  label: "Tests, Allies, Enemies",  helper: "The early proving ground. Who helped, who hurt, what tested your resolve." },
-    { key: "hj_07_inmost_cave",      stage: 7,  label: "Approach the Inmost Cave", helper: "The point where the real, deeper challenge revealed itself." },
-    { key: "hj_08_ordeal",           stage: 8,  label: "The Ordeal",              helper: "The hardest moment. Where you nearly broke. The dark night of the soul." },
-    { key: "hj_09_reward",           stage: 9,  label: "Reward (Seizing the Sword)", helper: "The breakthrough. What you discovered, claimed, or earned on the other side." },
-    { key: "hj_10_road_back",        stage: 10, label: "The Road Back",           helper: "The integration. Bringing the gift back to ordinary life — and the price paid for it." },
-    { key: "hj_11_resurrection",     stage: 11, label: "Resurrection",            helper: "The final test. The identity-level transformation that re-emerged on the other side." },
-    { key: "hj_12_return",           stage: 12, label: "Return with the Elixir",  helper: "What you now carry — and what you give to others. The reason you teach this." }
+    { key: "hj_01_ordinary_world",  stage: 1,  label: "Ordinary World",        helper: "Life before the journey began. The familiar — and the quiet ache underneath it." },
+    { key: "hj_02_call",            stage: 2,  label: "Call To Adventure",     helper: "The moment that broke the routine. The invitation, problem, or rupture you could not ignore." },
+    { key: "hj_03_refuse",          stage: 3,  label: "Refuse The Call",       helper: "The hesitation. The reasons you nearly stayed put. Fear, doubt, comfort." },
+    { key: "hj_04_meet_mentor",     stage: 4,  label: "Meet The Mentor",       helper: "The teacher, book, person or moment that gave you courage and a first map." },
+    { key: "hj_05_cross_threshold", stage: 5,  label: "Cross The Threshold",   helper: "The first irreversible step. The day you committed and there was no going back." },
+    { key: "hj_06_tests_allies",    stage: 6,  label: "Tests, Trials & Allies", helper: "The early proving ground. Who helped, who hurt, what tested your resolve." },
+    { key: "hj_07_final_approach",  stage: 7,  label: "Final Approach",        helper: "The point where the real, deeper challenge revealed itself." },
+    { key: "hj_08_battle",          stage: 8,  label: "The Battle",            helper: "The hardest moment. Where you nearly broke. The dark night of the soul." },
+    { key: "hj_09_seize_reward",    stage: 9,  label: "Seize The Reward",      helper: "The breakthrough. What you discovered, claimed, or earned on the other side." },
+    { key: "hj_10_road_back",       stage: 10, label: "The Road Back",         helper: "The integration. Bringing the gift back to ordinary life — and the price paid for it." },
+    { key: "hj_11_transformation",  stage: 11, label: "Transformation",        helper: "The identity-level shift that re-emerged on the other side." },
+    { key: "hj_12_share_elixir",    stage: 12, label: "Share The Elixir",      helper: "What you now carry — and what you give to others. The reason you teach this." }
 ];
 
 // ---- Hook-Story-Offer ----
@@ -427,6 +505,7 @@ export const POCKET_MEDIA_FIELDS = [
     { key: "cadence",       label: "Cadence",         helper: "How often will you publish? Pick a rhythm you can keep for 12 months." },
     { key: "format",        label: "Format",          helper: "What does each piece look like? (e.g. 600-word email, 25-min interview)" },
     { key: "name",          label: "Working Name",    helper: "The channel name — the thing you'll write at the top." },
+    { key: "url",           label: "URL (optional)",  helper: "Link to your existing channel — if it already lives somewhere." },
     { key: "first_5_ideas", label: "First 5 Ideas",   helper: "Five concrete first episodes / posts / issues. Specific titles, not topics." },
     { key: "audience_pull", label: "Audience Pull",   helper: "Why will someone subscribe? What ache or aspiration does this serve?" },
     { key: "kpi",           label: "KPI",             helper: "The single number you'll watch (subs, downloads, CTR, RSVPs, etc.)." }

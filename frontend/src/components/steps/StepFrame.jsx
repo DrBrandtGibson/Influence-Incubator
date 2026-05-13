@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     Sparkles, Mic, BookOpen, Compass, Megaphone, Quote, Check, Loader2,
-    ArrowRight, ArrowLeft, ChevronRight, ChevronDown, ChevronUp, User as UserIcon, Users
+    ArrowRight, ArrowLeft, ChevronRight, User as UserIcon, Users, Plus, Trash2
 } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
 import { authedFetch } from "@/lib/supabase";
@@ -11,8 +12,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { STEPS } from "@/lib/steps";
 import {
-    BRAND_VOICE_PROMPTS, STORY_BANK_PROMPTS, HEROS_JOURNEY_STAGES,
-    HSO_FIELDS, DISTILLATION_PROMPTS,
+    BRAND_VOICE_PROMPTS, STORY_BANK_PROMPTS, HEROS_JOURNEY_STAGES, HEROS_JOURNEY_IMAGE,
     FRAME_BRAND_VOICE_QUOTE, FRAME_HEROS_JOURNEY_INTRO, HSO_INTRO
 } from "@/lib/framework";
 
@@ -32,10 +32,7 @@ export default function StepFrame({ plan, getInput, setInput, markStepStatus, go
     const [tab, setTab] = useState("voice");
     const planId = plan.id;
 
-    const goToTab = (key) => {
-        setTab(key);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+    const goToTab = (key) => { setTab(key); window.scrollTo({ top: 0, behavior: "smooth" }); };
     const idx = TAB_ORDER.indexOf(tab);
     const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
     const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
@@ -104,7 +101,12 @@ function Section({ title, helper, children, eyebrow }) {
     );
 }
 
-// =================== BRAND VOICE ===================
+function persist(planId, fieldKey, value) {
+    if (!planId) return;
+    authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: STEP_NUM, field_key: fieldKey, value }) }).catch(() => {});
+}
+
+// =================== BRAND VOICE (unchanged from prior) ===================
 function BrandVoice({ planId, getInput, setInput }) {
     const [busy, setBusy] = useState(false);
     const synth = getInput(STEP_NUM, "brand_voice_statement");
@@ -114,24 +116,17 @@ function BrandVoice({ planId, getInput, setInput }) {
             const v = getInput(STEP_NUM, p.key);
             return v ? `Q${i + 1}: ${p.q}\n=> ${v}` : null;
         }).filter(Boolean).join("\n\n");
-
-        if (!answers) {
-            toast.error("Answer a few questions before synthesizing your Brand Voice.");
-            return;
-        }
+        if (!answers) { toast.error("Answer a few questions before synthesizing your Brand Voice."); return; }
         setBusy(true);
         try {
             await streamingGenerate({
-                field_key: "brand_voice_statement",
-                field_label: "Synthesized Brand Voice Profile",
+                field_key: "brand_voice_statement", field_label: "Synthesized Brand Voice Profile",
                 extra_context: { answers },
                 instructions:
                     "From these reflections, write a Brand Voice Profile in 3 parts (each part separated by a blank line, no markdown headings):\n" +
                     "PART 1 — VOICE IN ONE LINE: a single sentence capturing the brand's voice (10–18 words).\n" +
-                    "PART 2 — VOICE PROFILE: a tight 4-sentence paragraph describing tone, cadence, vocabulary, and emotional register. " +
-                    "Weave in the user's own adjectives, pet phrases, and metaphors when present.\n" +
-                    "PART 3 — WE SAY / WE DON'T SAY: two parallel mini-lists, exactly 4 items each, prefixed with 'We say:' and 'We don't say:'. " +
-                    "Concrete, specific phrases — not abstractions. Use the user's avoided words for 'We don't say'.\n" +
+                    "PART 2 — VOICE PROFILE: a tight 4-sentence paragraph describing tone, cadence, vocabulary, and emotional register.\n" +
+                    "PART 3 — WE SAY / WE DON'T SAY: two parallel mini-lists, exactly 4 items each, prefixed with 'We say:' and 'We don't say:'.\n" +
                     "Return only the three parts in order. No preamble.",
                 planId, stepNum: STEP_NUM, mode: "synthesize",
                 onText: (t) => setInput(STEP_NUM, "brand_voice_statement", t)
@@ -140,14 +135,13 @@ function BrandVoice({ planId, getInput, setInput }) {
     }
 
     return (
-        <Section eyebrow="Brand Voice" title="How your brand sounds out loud." helper="Ten short reflections. Answer the ones that pull you. When you're ready, synthesize a voice profile you can reuse on every page.">
+        <Section eyebrow="Brand Voice" title="How your brand sounds out loud." helper="Ten short reflections. When you're ready, synthesize a voice profile you can reuse on every page.">
             <figure className="my-2">
                 <blockquote className="font-serif text-xl md:text-2xl italic leading-snug text-foreground/90 pl-6 border-l-2 border-brand-gold" data-testid="brand-voice-quote">
                     “{FRAME_BRAND_VOICE_QUOTE.text}”
                 </blockquote>
                 <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— {FRAME_BRAND_VOICE_QUOTE.attribution}</figcaption>
             </figure>
-
             <div className="space-y-7 mt-7">
                 {BRAND_VOICE_PROMPTS.map((p, i) => (
                     <div key={p.key}>
@@ -155,32 +149,27 @@ function BrandVoice({ planId, getInput, setInput }) {
                         <div className="font-serif text-lg mb-2">{p.q}</div>
                         {p.helper && <p className="text-xs text-muted-foreground mb-2">{p.helper}</p>}
                         <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={p.key} fieldLabel={p.q} subModule="Brand Voice"
-                            rows={3}
-                            value={getInput(STEP_NUM, p.key)} onChange={(v) => setInput(STEP_NUM, p.key, v)} />
+                            rows={3} value={getInput(STEP_NUM, p.key)} onChange={(v) => setInput(STEP_NUM, p.key, v)} />
                     </div>
                 ))}
             </div>
-
             <div className="mt-10 dark-cinematic-panel p-7 md:p-8">
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
                     <div>
                         <div className="label-eyebrow text-brand-gold mb-1">Synthesize</div>
                         <h3 className="font-serif text-2xl">Distill your reflections into a Brand Voice profile.</h3>
-                        <p className="text-brand-cream/70 text-sm mt-1">A one-line voice + 4-sentence profile + a we-say/we-don't-say list.</p>
                     </div>
                     <Button onClick={synthesizeVoice} disabled={busy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="synthesize-brand-voice-button">
                         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Synthesize my Brand Voice</>}
                     </Button>
                 </div>
-
                 <div className="mt-6 border-t border-white/10 pt-5">
                     <div className="label-eyebrow text-brand-gold mb-2">Your Brand Voice</div>
                     <div className="rounded-xl bg-brand-cream text-brand-charcoal p-4 md:p-5">
                         <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey="brand_voice_statement"
-                            fieldLabel="Your Brand Voice profile"
-                            subModule="Brand Voice"
+                            fieldLabel="Your Brand Voice profile" subModule="Brand Voice"
                             rows={10}
-                            placeholder="Click 'Synthesize my Brand Voice' above, or write it yourself. You can refine with the AI tools."
+                            placeholder="Click 'Synthesize my Brand Voice' above, or write it yourself."
                             value={synth} onChange={(v) => setInput(STEP_NUM, "brand_voice_statement", v)}
                             testIdPrefix="brand-voice-profile-field"
                         />
@@ -191,105 +180,103 @@ function BrandVoice({ planId, getInput, setInput }) {
     );
 }
 
-// =================== STORY BANK ===================
+// =================== STORY BANK — MTP-style tabs ===================
 function StoryBank({ planId, getInput, setInput }) {
-    const [open, setOpen] = useState(() => Object.fromEntries(STORY_BANK_PROMPTS.map((p, i) => [p.key, i === 0])));
+    const [active, setActive] = useState(STORY_BANK_PROMPTS[0].key);
 
-    function toggle(key) {
-        setOpen((s) => ({ ...s, [key]: !s[key] }));
-    }
+    const statuses = STORY_BANK_PROMPTS.map((cat) => {
+        const filled = cat.questions.filter((q) => (getInput(STEP_NUM, `${cat.key}_${q.key}`) || "").trim().length > 0).length;
+        return { key: cat.key, label: cat.short, done: filled >= 1, filled, total: cat.questions.length };
+    });
+    const completedCount = statuses.filter((s) => s.done).length;
+
+    const activeIdx = STORY_BANK_PROMPTS.findIndex((c) => c.key === active);
+    const nextCat = activeIdx < STORY_BANK_PROMPTS.length - 1 ? STORY_BANK_PROMPTS[activeIdx + 1] : null;
 
     return (
-        <Section eyebrow="Story Bank" title="The reservoir." helper="Nine categories. Each one a vein of raw material you'll mine for the rest of your career. Don't polish — get it on the page.">
-            <div className="space-y-3">
-                {STORY_BANK_PROMPTS.map((p, i) => {
-                    const filled = (getInput(STEP_NUM, p.key) || "").trim().length > 0;
-                    const isOpen = !!open[p.key];
-                    return (
-                        <div key={p.key} className={`editorial-card transition-colors ${filled ? "border-brand-gold/40" : ""}`} data-testid={`story-${p.key}`}>
-                            <button
-                                type="button"
-                                onClick={() => toggle(p.key)}
-                                className="w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-secondary/40 rounded-2xl"
-                                data-testid={`story-${p.key}-toggle`}
-                            >
-                                <div className="label-eyebrow text-brand-bronze pt-1.5 shrink-0 min-w-[2ch]">{String(i + 1).padStart(2, "0")}</div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <div className="font-serif text-xl">{p.label}</div>
-                                        {filled && <Check className="h-4 w-4 text-brand-gold" />}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{p.helper}</p>
-                                </div>
-                                <div className="pt-2 shrink-0 text-muted-foreground">
-                                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                </div>
-                            </button>
-                            {isOpen && (
-                                <div className="px-5 pb-5 -mt-1">
-                                    <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={p.key} fieldLabel={`${p.label} — ${p.helper}`} subModule="Story Bank"
-                                        rows={5}
-                                        placeholder="Write what comes. Raw is fine."
-                                        value={getInput(STEP_NUM, p.key)} onChange={(v) => setInput(STEP_NUM, p.key, v)} />
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+        <Section eyebrow="Story Bank" title="The reservoir." helper="Nine categories. Each question is its own field — break your memories into small, specific pieces. Raw is fine.">
+            <div className="flex flex-wrap gap-2 mb-5" data-testid="story-category-chips">
+                {statuses.map((s) => (
+                    <button key={s.key} onClick={() => setActive(s.key)}
+                        className={`text-xs uppercase tracking-[0.18em] px-3 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${active === s.key ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : s.done ? "bg-brand-gold/10 border-brand-gold text-brand-bronze" : "hover:bg-secondary"}`}
+                        data-testid={`story-cat-${s.key}-button`}>
+                        {s.done && <Check className="h-3 w-3" />}
+                        {s.label}
+                    </button>
+                ))}
+                <span className="text-xs text-muted-foreground self-center ml-2" data-testid="story-completion-counter">{completedCount} of {STORY_BANK_PROMPTS.length} touched</span>
             </div>
+
+            {STORY_BANK_PROMPTS.filter((c) => c.key === active).map((c) => (
+                <div key={c.key}>
+                    <p className="text-sm text-muted-foreground mb-5">{c.intro}</p>
+                    <div className="space-y-5">
+                        {c.questions.map((q, i) => (
+                            <div key={q.key}>
+                                <div className="font-serif text-base mb-1.5">{i + 1}. {q.q}</div>
+                                <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                                    fieldKey={`${c.key}_${q.key}`}
+                                    fieldLabel={`${c.label} — ${q.q}`}
+                                    subModule={`Story Bank · ${c.label}`}
+                                    rows={3}
+                                    value={getInput(STEP_NUM, `${c.key}_${q.key}`)}
+                                    onChange={(v) => setInput(STEP_NUM, `${c.key}_${q.key}`, v)} />
+                            </div>
+                        ))}
+                    </div>
+                    {nextCat && (
+                        <div className="mt-7 flex justify-end" data-testid="story-category-nav">
+                            <Button onClick={() => { setActive(nextCat.key); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-full" variant="outline" data-testid={`story-next-cat-${nextCat.key}-button`}>
+                                Next: {nextCat.label} <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            ))}
         </Section>
     );
 }
 
-// =================== HERO'S JOURNEY ===================
+// =================== HERO'S JOURNEY — image-anchored ===================
 function HeroJourney({ planId, getInput, setInput }) {
-    // Two parallel journeys: founder + customer
-    const [persona, setPersona] = useState("founder"); // 'founder' | 'customer'
+    const [persona, setPersona] = useState("founder");
     const keyFor = (stage) => `${stage.key}__${persona}`;
-    const labelFor = (stage) => persona === "founder" ? stage.label : stage.label.replace(/your|you/gi, "their");
-
     const filledCount = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, keyFor(s)) || "").trim().length > 0).length;
 
     return (
-        <Section eyebrow="Hero's Journey" title="The 12-stage arc." helper={FRAME_HEROS_JOURNEY_INTRO}>
-            {/* Persona switch */}
+        <Section eyebrow="Hero's Journey" title="12-Stages of Discovery" helper={FRAME_HEROS_JOURNEY_INTRO}>
             <div className="flex flex-wrap items-center gap-2 mb-6" data-testid="hj-persona-switch">
-                <button
-                    onClick={() => setPersona("founder")}
+                <button onClick={() => setPersona("founder")}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition ${persona === "founder" ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : "hover:bg-secondary"}`}
-                    data-testid="hj-persona-founder"
-                >
+                    data-testid="hj-persona-founder">
                     <UserIcon className="h-4 w-4" /> Founder's Journey
                 </button>
-                <button
-                    onClick={() => setPersona("customer")}
+                <button onClick={() => setPersona("customer")}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition ${persona === "customer" ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : "hover:bg-secondary"}`}
-                    data-testid="hj-persona-customer"
-                >
+                    data-testid="hj-persona-customer">
                     <Users className="h-4 w-4" /> Customer's Journey
                 </button>
                 <span className="text-xs text-muted-foreground self-center ml-2" data-testid="hj-progress">{filledCount} of 12 stages drafted</span>
             </div>
 
-            {/* SVG wheel + sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
                 <div className="lg:col-span-5">
-                    <HeroJourneyWheel
-                        stages={HEROS_JOURNEY_STAGES}
-                        filled={(s) => (getInput(STEP_NUM, keyFor(s)) || "").trim().length > 0}
-                    />
+                    <div className="editorial-card p-3 sticky top-32" data-testid="hj-image-card">
+                        <img src={HEROS_JOURNEY_IMAGE} alt="The Hero's Journey — 12 stages" className="w-full h-auto rounded-md" data-testid="hj-image" />
+                        <p className="text-[11px] text-muted-foreground text-center mt-2">© 2023 Dr. Brandt R. Gibson</p>
+                    </div>
                 </div>
                 <div className="lg:col-span-7 space-y-5" data-testid="hj-stages-list">
                     {HEROS_JOURNEY_STAGES.map((s) => (
                         <div key={s.key} className="editorial-card p-5">
                             <div className="flex items-center gap-3 mb-1">
                                 <div className="h-7 w-7 rounded-full bg-brand-gold/20 text-brand-bronze grid place-items-center font-serif text-sm shrink-0">{s.stage}</div>
-                                <div className="font-serif text-lg">{labelFor(s)}</div>
+                                <div className="font-serif text-lg">{s.label}</div>
                             </div>
                             <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{s.helper}</p>
                             <AIAssistInput planId={planId} stepNum={STEP_NUM}
                                 fieldKey={keyFor(s)}
-                                fieldLabel={`${labelFor(s)} — ${s.helper}`}
+                                fieldLabel={`${s.label} — ${s.helper}`}
                                 subModule={`Hero's Journey · ${persona === "founder" ? "Founder" : "Customer"}`}
                                 rows={3}
                                 value={getInput(STEP_NUM, keyFor(s))} onChange={(v) => setInput(STEP_NUM, keyFor(s), v)} />
@@ -301,225 +288,364 @@ function HeroJourney({ planId, getInput, setInput }) {
     );
 }
 
-function HeroJourneyWheel({ stages, filled }) {
-    // 12 segments around a circle. Each highlights when filled.
-    const cx = 200, cy = 200, rOuter = 180, rInner = 70;
-    const segments = stages.map((s, i) => {
-        const a0 = ((i / 12) * 2 * Math.PI) - Math.PI / 2;
-        const a1 = (((i + 1) / 12) * 2 * Math.PI) - Math.PI / 2;
-        const x0 = cx + rOuter * Math.cos(a0), y0 = cy + rOuter * Math.sin(a0);
-        const x1 = cx + rOuter * Math.cos(a1), y1 = cy + rOuter * Math.sin(a1);
-        const x2 = cx + rInner * Math.cos(a1), y2 = cy + rInner * Math.sin(a1);
-        const x3 = cx + rInner * Math.cos(a0), y3 = cy + rInner * Math.sin(a0);
-        const d = `M ${x0} ${y0} A ${rOuter} ${rOuter} 0 0 1 ${x1} ${y1} L ${x2} ${y2} A ${rInner} ${rInner} 0 0 0 ${x3} ${y3} Z`;
-        // Label position (midpoint angle)
-        const mid = (a0 + a1) / 2;
-        const lr = (rOuter + rInner) / 2;
-        const lx = cx + lr * Math.cos(mid);
-        const ly = cy + lr * Math.sin(mid);
-        const isFilled = filled(s);
-        return { d, lx, ly, num: s.stage, isFilled, key: s.key };
-    });
+// =================== Offers shared helpers ===================
+function readOfferIds(getInput) {
+    try {
+        const raw = getInput(STEP_NUM, "offer_ids");
+        const arr = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+    } catch { /* fall through */ }
+    return ["offer_1"];
+}
+
+function writeOfferIds(ids, planId, setInput) {
+    const json = JSON.stringify(ids);
+    setInput(STEP_NUM, "offer_ids", json);
+    persist(planId, "offer_ids", json);
+}
+
+function offerName(id, getInput, idx) {
+    const n = getInput(STEP_NUM, `${id}_name`);
+    return n && n.trim() ? n : `Offer ${idx + 1}`;
+}
+
+function readStack(getInput, id) {
+    try {
+        const raw = getInput(STEP_NUM, `${id}_stack`);
+        const arr = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+    } catch { /* fall through */ }
+    return [{ item: "", benefit: "", value: "" }];
+}
+
+// =================== HOOK-STORY-OFFER (multi-offer) ===================
+function HookStoryOffer({ planId, getInput, setInput }) {
+    const offerIds = readOfferIds(getInput);
+    const [active, setActive] = useState(offerIds[0]);
+    if (!offerIds.includes(active)) setActive(offerIds[0]);
+
+    function addOffer() {
+        const id = `offer_${Date.now()}`;
+        writeOfferIds([...offerIds, id], planId, setInput);
+        setActive(id);
+        toast.success("New offer added.");
+    }
+    function removeOffer(id) {
+        if (offerIds.length <= 1) { toast.error("Keep at least one offer."); return; }
+        const next = offerIds.filter((x) => x !== id);
+        writeOfferIds(next, planId, setInput);
+        setActive(next[0]);
+    }
+
     return (
-        <div className="editorial-card p-4 sticky top-32" data-testid="hj-wheel">
-            <div className="aspect-square w-full">
-                <svg viewBox="0 0 400 400" className="w-full h-full">
-                    <defs>
-                        <radialGradient id="hj-center" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="hsl(var(--brand-gold))" stopOpacity="0.18" />
-                            <stop offset="100%" stopColor="hsl(var(--brand-gold))" stopOpacity="0" />
-                        </radialGradient>
-                    </defs>
-                    {segments.map((seg) => (
-                        <g key={seg.key}>
-                            <path
-                                d={seg.d}
-                                fill={seg.isFilled ? "hsl(var(--brand-gold) / 0.28)" : "hsl(var(--secondary))"}
-                                stroke="hsl(var(--border))"
-                                strokeWidth="1"
-                            />
-                            <text x={seg.lx} y={seg.ly + 4} textAnchor="middle" className="font-serif" fontSize="14" fill="hsl(var(--foreground))">
-                                {seg.num}
-                            </text>
-                        </g>
-                    ))}
-                    <circle cx={cx} cy={cy} r={rInner} fill="url(#hj-center)" stroke="hsl(var(--brand-gold))" strokeOpacity="0.5" strokeWidth="1.5" />
-                    <text x={cx} y={cy - 4} textAnchor="middle" fontSize="12" fill="hsl(var(--brand-bronze))" className="uppercase tracking-[0.18em]">
-                        Hero's
-                    </text>
-                    <text x={cx} y={cy + 14} textAnchor="middle" fontSize="14" fill="hsl(var(--foreground))" className="font-serif">
-                        Journey
-                    </text>
-                </svg>
+        <Section eyebrow="Hook · Story · Offer" title="Build offers, then assemble the message." helper={HSO_INTRO}>
+            <div className="flex flex-wrap items-center gap-2 mb-5" data-testid="offers-chips">
+                {offerIds.map((id, i) => (
+                    <button key={id} onClick={() => setActive(id)}
+                        className={`text-sm px-4 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${active === id ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : "hover:bg-secondary"}`}
+                        data-testid={`offer-chip-${id}`}>
+                        {offerName(id, getInput, i)}
+                    </button>
+                ))}
+                <Button variant="outline" onClick={addOffer} className="rounded-full" data-testid="offer-add-button">
+                    <Plus className="h-4 w-4 mr-1.5" /> Add offer
+                </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground text-center mt-2">Gold segments are drafted. Click any stage card to edit.</p>
+
+            {offerIds.filter((id) => id === active).map((id, idx) => (
+                <OfferEditor key={id} id={id} idx={offerIds.indexOf(id)} planId={planId}
+                    getInput={getInput} setInput={setInput}
+                    onRemove={() => removeOffer(id)}
+                    canRemove={offerIds.length > 1}
+                />
+            ))}
+        </Section>
+    );
+}
+
+function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove }) {
+    const [pane, setPane] = useState("details"); // details | message
+    const stack = readStack(getInput, id);
+
+    function updateStack(next) {
+        const json = JSON.stringify(next);
+        setInput(STEP_NUM, `${id}_stack`, json);
+        persist(planId, `${id}_stack`, json);
+    }
+    function updateStackRow(i, field, value) {
+        const next = stack.map((r, j) => j === i ? { ...r, [field]: value } : r);
+        updateStack(next);
+    }
+    function addStackRow() { updateStack([...stack, { item: "", benefit: "", value: "" }]); }
+    function removeStackRow(i) { updateStack(stack.filter((_, j) => j !== i)); }
+
+    const [busy, setBusy] = useState(false);
+    async function generateHookStory() {
+        const stackText = stack.filter((r) => r.item || r.benefit || r.value).map((r, i) => `${i + 1}. ${r.item || "?"} — ${r.benefit || "?"} — value: ${r.value || "?"}`).join("\n");
+        const price = getInput(STEP_NUM, `${id}_price`) || "";
+        const offerN = offerName(id, getInput, idx);
+        if (!stackText && !price) { toast.error("Fill in the stack and price first."); return; }
+        const voice = getInput(STEP_NUM, "brand_voice_statement") || "";
+        setBusy(true);
+        try {
+            const ctx = { offer_name: offerN, stack: stackText, price, voice };
+            // Generate hook then story sequentially using two AI calls so each persists into its own field
+            await streamingGenerate({
+                field_key: `${id}_hook`, field_label: `Hook for offer ${offerN}`,
+                extra_context: ctx,
+                instructions:
+                    "Write a single one-sentence HOOK for the offer described in extra_context. " +
+                    "Maximum 16 words. Pattern-interrupt, contrarian claim, or specific stat/promise. " +
+                    "Use the user's Brand Voice profile. Return only the sentence — no preamble, no quotes.",
+                planId, stepNum: STEP_NUM, mode: "generate",
+                onText: (t) => setInput(STEP_NUM, `${id}_hook`, t)
+            });
+            await streamingGenerate({
+                field_key: `${id}_story`, field_label: `Story for offer ${offerN}`,
+                extra_context: ctx,
+                instructions:
+                    "Write a 4–6 sentence STORY that bridges hook to offer. " +
+                    "Make it personal, vivid and emotionally resonant. " +
+                    "Anchor it in the value stack and the price-vs-value gap. " +
+                    "Use the user's Brand Voice. Return only the paragraph.",
+                planId, stepNum: STEP_NUM, mode: "generate",
+                onText: (t) => setInput(STEP_NUM, `${id}_story`, t)
+            });
+            setPane("message");
+        } finally { setBusy(false); }
+    }
+
+    return (
+        <div className="editorial-card p-5 md:p-7" data-testid={`offer-editor-${id}`}>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                <div className="flex-1 min-w-0">
+                    <div className="label-eyebrow mb-1">Offer name</div>
+                    <Input
+                        value={getInput(STEP_NUM, `${id}_name`) || ""}
+                        onChange={(e) => setInput(STEP_NUM, `${id}_name`, e.target.value)}
+                        onBlur={(e) => persist(planId, `${id}_name`, e.target.value)}
+                        placeholder={`Offer ${idx + 1}`}
+                        className="rounded-xl h-11 max-w-md font-serif text-lg"
+                        data-testid={`offer-${id}-name`}
+                    />
+                </div>
+                {canRemove && (
+                    <Button variant="ghost" size="sm" onClick={onRemove} className="text-muted-foreground hover:text-destructive" data-testid={`offer-${id}-remove`}>
+                        <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                )}
+            </div>
+
+            <div className="inline-flex p-1 rounded-full bg-secondary/60 mb-5" data-testid={`offer-${id}-pane-switch`}>
+                <button onClick={() => setPane("details")}
+                    className={`px-4 py-1.5 rounded-full text-sm ${pane === "details" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
+                    data-testid={`offer-${id}-pane-details`}>
+                    1 · Stack & Price
+                </button>
+                <button onClick={() => setPane("message")}
+                    className={`px-4 py-1.5 rounded-full text-sm ${pane === "message" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
+                    data-testid={`offer-${id}-pane-message`}>
+                    2 · Hook & Story
+                </button>
+            </div>
+
+            {pane === "details" && (
+                <div>
+                    <div className="label-eyebrow mb-2">Offer Stack</div>
+                    <p className="text-xs text-muted-foreground mb-3">Break the offer into items. For each: what they get, the benefit, and the dollar value of that piece.</p>
+                    <div className="space-y-2" data-testid={`offer-${id}-stack`}>
+                        <div className="grid grid-cols-12 gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                            <div className="col-span-4">Item</div>
+                            <div className="col-span-5">Benefit</div>
+                            <div className="col-span-2">Value</div>
+                            <div className="col-span-1"></div>
+                        </div>
+                        {stack.map((r, i) => (
+                            <div key={i} className="grid grid-cols-12 gap-2">
+                                <Input className="col-span-4 h-10 rounded-lg" value={r.item} onChange={(e) => updateStackRow(i, "item", e.target.value)} placeholder="e.g. 8-week coaching" data-testid={`offer-${id}-stack-item-${i}`} />
+                                <Input className="col-span-5 h-10 rounded-lg" value={r.benefit} onChange={(e) => updateStackRow(i, "benefit", e.target.value)} placeholder="e.g. Done-with-you brand voice" data-testid={`offer-${id}-stack-benefit-${i}`} />
+                                <Input className="col-span-2 h-10 rounded-lg" value={r.value} onChange={(e) => updateStackRow(i, "value", e.target.value)} placeholder="$2,000" data-testid={`offer-${id}-stack-value-${i}`} />
+                                <button onClick={() => removeStackRow(i)} disabled={stack.length <= 1} className="col-span-1 grid place-items-center text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label="Remove row" data-testid={`offer-${id}-stack-remove-${i}`}>
+                                    <Trash2 className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={addStackRow} className="rounded-full mt-2" data-testid={`offer-${id}-stack-add`}>
+                            <Plus className="h-4 w-4 mr-1" /> Add line
+                        </Button>
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+                        <div>
+                            <div className="label-eyebrow mb-1">Final Price</div>
+                            <Input
+                                value={getInput(STEP_NUM, `${id}_price`) || ""}
+                                onChange={(e) => setInput(STEP_NUM, `${id}_price`, e.target.value)}
+                                onBlur={(e) => persist(planId, `${id}_price`, e.target.value)}
+                                placeholder="$997"
+                                className="h-11 rounded-xl"
+                                data-testid={`offer-${id}-price`}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-7 flex justify-end">
+                        <Button onClick={generateHookStory} disabled={busy} className="cta-red rounded-full h-11 px-5" data-testid={`offer-${id}-next`}>
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Next: Generate Hook & Story <ChevronRight className="h-4 w-4 ml-1" /></>}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {pane === "message" && (
+                <div className="space-y-6">
+                    <div>
+                        <div className="label-eyebrow mb-1.5">HOOK</div>
+                        <p className="text-xs text-muted-foreground mb-2">One-sentence attention-grabber. Edit freely.</p>
+                        <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                            fieldKey={`${id}_hook`}
+                            fieldLabel={`Hook for offer ${offerName(id, getInput, idx)}`}
+                            subModule="Hook-Story-Offer"
+                            rows={2}
+                            value={getInput(STEP_NUM, `${id}_hook`)}
+                            onChange={(v) => setInput(STEP_NUM, `${id}_hook`, v)} />
+                    </div>
+                    <div>
+                        <div className="label-eyebrow mb-1.5">STORY</div>
+                        <p className="text-xs text-muted-foreground mb-2">4–6 sentence bridge. Edit freely.</p>
+                        <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                            fieldKey={`${id}_story`}
+                            fieldLabel={`Story for offer ${offerName(id, getInput, idx)}`}
+                            subModule="Hook-Story-Offer"
+                            rows={5}
+                            value={getInput(STEP_NUM, `${id}_story`)}
+                            onChange={(v) => setInput(STEP_NUM, `${id}_story`, v)} />
+                    </div>
+                    <div className="flex justify-between">
+                        <Button variant="ghost" onClick={() => setPane("details")} data-testid={`offer-${id}-back`}>
+                            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Stack
+                        </Button>
+                        <Button onClick={generateHookStory} disabled={busy} variant="outline" className="rounded-full" data-testid={`offer-${id}-regenerate`}>
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Regenerate from Stack</>}
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-// =================== HOOK-STORY-OFFER ===================
-function HookStoryOffer({ planId, getInput, setInput }) {
-    const [busy, setBusy] = useState(false);
-
-    async function generateHSO() {
-        const voice = getInput(STEP_NUM, "brand_voice_statement") || "";
-        const storyHighlights = STORY_BANK_PROMPTS.map((p) => {
-            const v = getInput(STEP_NUM, p.key);
-            return v ? `${p.label}: ${v}` : null;
-        }).filter(Boolean).join("\n");
-        const journey = HEROS_JOURNEY_STAGES.map((s) => {
-            const v = getInput(STEP_NUM, `${s.key}__founder`);
-            return v ? `Stage ${s.stage} ${s.label}: ${v}` : null;
-        }).filter(Boolean).join("\n");
-
-        if (!voice && !storyHighlights) {
-            toast.error("Draft your Brand Voice and a few stories first — the generator needs raw material.");
-            return;
-        }
-
-        setBusy(true);
-        try {
-            await streamingGenerate({
-                field_key: "hso_bundle",
-                field_label: "Hook · Story · Offer bundle",
-                extra_context: { voice, storyHighlights, journey },
-                instructions:
-                    "Generate a complete Hook · Story · Offer bundle for this user's brand, in three labeled sections separated by blank lines:\n" +
-                    "HOOK:\n— 3 distinct one-line hooks. Each labeled (a), (b), (c). " +
-                    "Each ≤ 16 words. Use pattern-interrupt, contrarian claim, or specific stat/promise.\n\n" +
-                    "STORY:\n— A 4–6 sentence story bridging hook to offer. Pull from the user's actual stories above. " +
-                    "Calm, deliberate, vivid. Use the user's voice from the Brand Voice profile.\n\n" +
-                    "OFFER:\n— One paragraph (3–4 sentences). Name the transformation, the method, and the single clear next step. " +
-                    "End with a specific, gentle call-to-action.\n\n" +
-                    "Return only those three sections. No preamble.",
-                planId, stepNum: STEP_NUM, mode: "generate",
-                onText: (t) => setInput(STEP_NUM, "hso_bundle", t)
-            });
-        } finally { setBusy(false); }
-    }
+// =================== IMPORTANT STORIES — per-offer ===================
+function Distillation({ planId, getInput, setInput }) {
+    const offerIds = readOfferIds(getInput);
+    const [active, setActive] = useState(offerIds[0]);
+    if (!offerIds.includes(active)) setActive(offerIds[0]);
 
     return (
-        <Section eyebrow="Hook · Story · Offer" title="Assemble the message." helper={HSO_INTRO}>
-            {/* AI generator */}
-            <div className="dark-cinematic-panel p-7 md:p-8 mb-7">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
-                    <div>
-                        <div className="label-eyebrow text-brand-gold mb-1">Generate</div>
-                        <h3 className="font-serif text-2xl">Auto-compose a Hook · Story · Offer from your inputs.</h3>
-                        <p className="text-brand-cream/70 text-sm mt-1">Uses your Brand Voice + Story Bank + Hero's Journey. Then refine each piece below.</p>
-                    </div>
-                    <Button onClick={generateHSO} disabled={busy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="generate-hso-button">
-                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Generate HSO bundle</>}
-                    </Button>
-                </div>
-                {getInput(STEP_NUM, "hso_bundle") && (
-                    <div className="mt-6 border-t border-white/10 pt-5">
-                        <div className="label-eyebrow text-brand-gold mb-2">Generated bundle</div>
-                        <div className="rounded-xl bg-brand-cream text-brand-charcoal p-4 md:p-5">
-                            <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey="hso_bundle"
-                                fieldLabel="Hook · Story · Offer bundle (editable)"
-                                subModule="Hook-Story-Offer"
-                                rows={10}
-                                value={getInput(STEP_NUM, "hso_bundle")} onChange={(v) => setInput(STEP_NUM, "hso_bundle", v)}
-                                testIdPrefix="hso-bundle-field"
-                            />
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Per-field refinement */}
-            <div className="space-y-7">
-                {HSO_FIELDS.map((f) => (
-                    <div key={f.key}>
-                        <div className="label-eyebrow mb-1.5">{f.label}</div>
-                        <p className="text-xs text-muted-foreground mb-2">{f.helper}</p>
-                        <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={f.key} fieldLabel={`${f.label} — ${f.helper}`} subModule="Hook-Story-Offer"
-                            rows={f.key === "hso_story" ? 5 : 3}
-                            value={getInput(STEP_NUM, f.key)} onChange={(v) => setInput(STEP_NUM, f.key, v)} />
-                    </div>
+        <Section eyebrow="Important Stories" title="Distill each offer." helper="For every offer, generate a one-line Transformation Promise and a 200-word Elevator Pitch from everything you've entered. Always editable.">
+            <div className="flex flex-wrap items-center gap-2 mb-6" data-testid="dist-offer-chips">
+                {offerIds.map((id, i) => (
+                    <button key={id} onClick={() => setActive(id)}
+                        className={`text-sm px-4 py-1.5 rounded-full border inline-flex items-center gap-1.5 ${active === id ? "bg-brand-charcoal text-brand-cream border-brand-charcoal" : "hover:bg-secondary"}`}
+                        data-testid={`dist-offer-chip-${id}`}>
+                        {offerName(id, getInput, i)}
+                    </button>
                 ))}
             </div>
+
+            {offerIds.filter((id) => id === active).map((id) => (
+                <DistillationFor key={id} id={id} idx={offerIds.indexOf(id)} planId={planId} getInput={getInput} setInput={setInput} />
+            ))}
         </Section>
     );
 }
 
-// =================== IMPORTANT STORIES (Distillation) ===================
-function Distillation({ planId, getInput, setInput }) {
+function DistillationFor({ id, idx, planId, getInput, setInput }) {
     const [busy, setBusy] = useState(false);
+    const offerN = offerName(id, getInput, idx);
 
-    async function synthesizeElevator() {
+    async function autoFill() {
         const voice = getInput(STEP_NUM, "brand_voice_statement") || "";
-        const storyHighlights = STORY_BANK_PROMPTS.map((p) => {
-            const v = getInput(STEP_NUM, p.key);
-            return v ? `${p.label}: ${v}` : null;
-        }).filter(Boolean).join("\n");
-        const transformation = getInput(STEP_NUM, "dist_transformation_promise") || "";
-        const hso = getInput(STEP_NUM, "hso_bundle") || "";
+        const storyHighlights = STORY_BANK_PROMPTS.flatMap((cat) => cat.questions.map((q) => {
+            const v = getInput(STEP_NUM, `${cat.key}_${q.key}`);
+            return v ? `[${cat.label}] ${q.q}\n=> ${v}` : null;
+        })).filter(Boolean).join("\n");
+        const stack = readStack(getInput, id).filter((r) => r.item || r.benefit || r.value).map((r, i) => `${i + 1}. ${r.item} — ${r.benefit} — value: ${r.value}`).join("\n");
+        const price = getInput(STEP_NUM, `${id}_price`) || "";
+        const hook = getInput(STEP_NUM, `${id}_hook`) || "";
+        const story = getInput(STEP_NUM, `${id}_story`) || "";
 
-        if (!storyHighlights && !transformation) {
-            toast.error("Draft a transformation promise and a few stories first.");
-            return;
-        }
         setBusy(true);
         try {
+            const ctx = { offer_name: offerN, voice, storyHighlights, stack, price, hook, story };
             await streamingGenerate({
-                field_key: "dist_elevator",
-                field_label: "200-word Elevator Pitch",
-                extra_context: { voice, storyHighlights, transformation, hso },
+                field_key: `${id}_promise`, field_label: `Transformation Promise — ${offerN}`,
+                extra_context: ctx,
                 instructions:
-                    "Write a single 200-word elevator pitch (180–220 words) for this brand. " +
-                    "Present-tense, in the user's Brand Voice. Use this arc: the world I serve → the rupture I name → the new path I offer → the result. " +
-                    "Weave in concrete details from the user's stories. End with a single, specific invitation. Return only the paragraph.",
+                    "Write a single-sentence Transformation Promise for this offer. " +
+                    "Format: from [old identity/state] to [new identity/state] — vivid and specific. " +
+                    "Use the Brand Voice. Return only the sentence.",
                 planId, stepNum: STEP_NUM, mode: "synthesize",
-                onText: (t) => setInput(STEP_NUM, "dist_elevator", t)
+                onText: (t) => setInput(STEP_NUM, `${id}_promise`, t)
+            });
+            await streamingGenerate({
+                field_key: `${id}_elevator`, field_label: `200-word Elevator Pitch — ${offerN}`,
+                extra_context: ctx,
+                instructions:
+                    "Write a 200-word elevator pitch (180–220 words) for this offer. " +
+                    "Arc: world I serve → the rupture I name → the new path I offer → the result → a single specific invitation. " +
+                    "Present-tense, in the user's Brand Voice. Weave in concrete story details. Return only the paragraph.",
+                planId, stepNum: STEP_NUM, mode: "synthesize",
+                onText: (t) => setInput(STEP_NUM, `${id}_elevator`, t)
             });
         } finally { setBusy(false); }
     }
 
     return (
-        <Section eyebrow="Important Stories" title="Distill the whole." helper="Two artifacts you'll reuse forever: a one-line transformation promise, and a 200-word elevator pitch.">
-            <div className="space-y-8">
-                {DISTILLATION_PROMPTS.map((p) => {
-                    const isElevator = p.key === "dist_elevator";
-                    return (
-                        <div key={p.key}>
-                            <div className="flex items-center justify-between gap-3 flex-wrap mb-1.5">
-                                <div className="label-eyebrow">{p.label}</div>
-                                {isElevator && (
-                                    <Button onClick={synthesizeElevator} disabled={busy} variant="outline" className="rounded-full" data-testid="synthesize-elevator-button">
-                                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Synthesize</>}
-                                    </Button>
-                                )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">{p.helper}</p>
-                            <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={p.key} fieldLabel={`${p.label} — ${p.helper}`} subModule="Important Stories"
-                                rows={isElevator ? 8 : 3}
-                                value={getInput(STEP_NUM, p.key)} onChange={(v) => setInput(STEP_NUM, p.key, v)} />
-                        </div>
-                    );
-                })}
+        <div className="editorial-card p-5 md:p-7" data-testid={`dist-for-${id}`}>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+                <div className="font-serif text-2xl">{offerN}</div>
+                <Button onClick={autoFill} disabled={busy} className="cta-red rounded-full" data-testid={`dist-${id}-autofill`}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> AI auto-fill from my plan</>}
+                </Button>
             </div>
-        </Section>
+            <div className="space-y-7">
+                <div>
+                    <div className="label-eyebrow mb-1.5">Transformation Promise (1 line)</div>
+                    <p className="text-xs text-muted-foreground mb-2">From [old identity/state] to [new identity/state].</p>
+                    <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                        fieldKey={`${id}_promise`}
+                        fieldLabel={`Transformation Promise — ${offerN}`}
+                        subModule="Important Stories"
+                        rows={3}
+                        value={getInput(STEP_NUM, `${id}_promise`)}
+                        onChange={(v) => setInput(STEP_NUM, `${id}_promise`, v)} />
+                </div>
+                <div>
+                    <div className="label-eyebrow mb-1.5">200-word Elevator Pitch</div>
+                    <p className="text-xs text-muted-foreground mb-2">A condensed, present-tense narrative.</p>
+                    <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                        fieldKey={`${id}_elevator`}
+                        fieldLabel={`Elevator Pitch — ${offerN}`}
+                        subModule="Important Stories"
+                        rows={8}
+                        value={getInput(STEP_NUM, `${id}_elevator`)}
+                        onChange={(v) => setInput(STEP_NUM, `${id}_elevator`, v)} />
+                </div>
+            </div>
+        </div>
     );
 }
 
-// =================== OUTPUT ===================
+// =================== OUTPUT — multi-offer ===================
 function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const [marking, setMarking] = useState(false);
-    const data = {
-        voice: getInput(STEP_NUM, "brand_voice_statement"),
-        promise: getInput(STEP_NUM, "dist_transformation_promise"),
-        elevator: getInput(STEP_NUM, "dist_elevator"),
-        hso: getInput(STEP_NUM, "hso_bundle"),
-        hook: getInput(STEP_NUM, "hso_hook"),
-        story: getInput(STEP_NUM, "hso_story"),
-        offer: getInput(STEP_NUM, "hso_offer")
-    };
+    const offerIds = readOfferIds(getInput);
 
-    const storiesFilled = STORY_BANK_PROMPTS.filter((p) => (getInput(STEP_NUM, p.key) || "").trim().length > 0).length;
+    const storiesFilled = STORY_BANK_PROMPTS.filter((c) => c.questions.some((q) => (getInput(STEP_NUM, `${c.key}_${q.key}`) || "").trim().length > 0)).length;
     const founderStages = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, `${s.key}__founder`) || "").trim().length > 0).length;
     const customerStages = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, `${s.key}__customer`) || "").trim().length > 0).length;
+    const voice = getInput(STEP_NUM, "brand_voice_statement");
 
     async function complete() {
         setMarking(true);
@@ -534,25 +660,43 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     return (
         <Section eyebrow="Your Output" title="FRAME Your Story Card" helper="Edit anything by jumping back to the relevant tab. This card is your story HQ.">
             <div className="editorial-card p-7 md:p-8" data-testid="step3-output-card">
-                <Field label="Transformation Promise" value={data.promise} />
-                <Field label="Brand Voice" value={data.voice} multiline />
+                <Field label="Brand Voice" value={voice} multiline />
 
                 <div className="py-3">
-                    <div className="label-eyebrow text-brand-bronze mb-2">Hook · Story · Offer</div>
-                    {(data.hook || data.story || data.offer) ? (
-                        <div className="space-y-3">
-                            {data.hook && <BlockRow label="Hook" value={data.hook} />}
-                            {data.story && <BlockRow label="Story" value={data.story} />}
-                            {data.offer && <BlockRow label="Offer" value={data.offer} />}
-                        </div>
-                    ) : data.hso ? (
-                        <div className="editorial-card p-4 bg-secondary/30 whitespace-pre-wrap text-sm leading-relaxed" data-testid="output-hso-bundle">{data.hso}</div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground italic">Generate or write your HSO bundle on the Hook · Story · Offer tab.</p>
-                    )}
+                    <div className="label-eyebrow text-brand-bronze mb-2">Offers ({offerIds.length})</div>
+                    <div className="space-y-5" data-testid="output-offers">
+                        {offerIds.map((id, idx) => {
+                            const stack = readStack(getInput, id).filter((r) => r.item || r.benefit || r.value);
+                            const price = getInput(STEP_NUM, `${id}_price`);
+                            const hook = getInput(STEP_NUM, `${id}_hook`);
+                            const story = getInput(STEP_NUM, `${id}_story`);
+                            const promise = getInput(STEP_NUM, `${id}_promise`);
+                            const elevator = getInput(STEP_NUM, `${id}_elevator`);
+                            return (
+                                <div key={id} className="editorial-card p-5 bg-secondary/30" data-testid={`output-offer-${id}`}>
+                                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                                        <div className="font-serif text-2xl">{offerName(id, getInput, idx)}</div>
+                                        {price && <div className="text-brand-bronze font-serif text-xl">{price}</div>}
+                                    </div>
+                                    {stack.length > 0 && (
+                                        <div className="mt-3">
+                                            <div className="label-eyebrow text-brand-bronze mb-1.5">Stack</div>
+                                            <ul className="text-sm space-y-1">
+                                                {stack.map((r, i) => (
+                                                    <li key={i} className="flex gap-2"><span className="text-brand-bronze">·</span><span className="flex-1"><span className="font-medium">{r.item}</span>{r.benefit && <> — <span className="text-muted-foreground">{r.benefit}</span></>}{r.value && <> · <span className="text-brand-bronze">{r.value}</span></>}</span></li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {hook && <Sub label="Hook" value={hook} />}
+                                    {story && <Sub label="Story" value={story} />}
+                                    {promise && <Sub label="Transformation Promise" value={promise} />}
+                                    {elevator && <Sub label="Elevator Pitch (200 words)" value={elevator} />}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-
-                <Field label="200-word Elevator Pitch" value={data.elevator} multiline />
 
                 <div className="py-3">
                     <div className="label-eyebrow text-brand-bronze mb-2">Coverage</div>
@@ -584,9 +728,9 @@ function Field({ label, value, multiline }) {
     );
 }
 
-function BlockRow({ label, value }) {
+function Sub({ label, value }) {
     return (
-        <div className="editorial-card p-4 bg-secondary/30">
+        <div className="mt-3 pt-3 border-t border-border/50">
             <div className="label-eyebrow text-brand-bronze mb-1">{label}</div>
             <div className="text-sm leading-relaxed whitespace-pre-wrap">{value}</div>
         </div>
@@ -602,8 +746,8 @@ function Stat({ label, value, testId }) {
     );
 }
 
-// Helper: streaming generate (mirrors StepDefine.streamingGenerate)
-async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText, persist = true }) {
+// Helper: streaming generate
+async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText, persist: shouldPersist = true }) {
     try {
         const url = `/ai/${mode === "synthesize" ? "synthesize" : "generate"}`;
         const res = await authedFetch(url, {
@@ -636,10 +780,9 @@ async function streamingGenerate({ field_key, field_label, instructions, planId,
                 else if (event === "error") { throw new Error(payload.error || "Generation error"); }
             }
         }
-        if (persist && planId && acc) {
+        if (shouldPersist && planId && acc) {
             authedFetch(`/plans/${planId}/inputs`, {
-                method: "POST",
-                keepalive: true,
+                method: "POST", keepalive: true,
                 body: JSON.stringify({ step_num: stepNum, field_key, value: acc })
             }).catch(() => { /* swallow */ });
         }

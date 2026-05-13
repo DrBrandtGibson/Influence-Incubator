@@ -1,38 +1,30 @@
 [
   {
-    "content": "Add Step 4 framework constants",
+    "content": "Update framework.js: Story Bank sub-questions + new HJ labels + URL field",
     "status": "completed"
   },
   {
-    "content": "Create StepIgnite.jsx with 6 tabs",
+    "content": "Step 3 — Story Bank tabs + per-question fields",
     "status": "completed"
   },
   {
-    "content": "Build Brand Personality (12 archetypes + AI palette + AI typography)",
+    "content": "Step 3 — Hero's Journey image + new labels + header rename",
     "status": "completed"
   },
   {
-    "content": "Build Pocket Media Empire (5 channel sub-workspaces)",
+    "content": "Step 3 — HSO multi-offer (Stack/Price → Hook & Story)",
     "status": "completed"
   },
   {
-    "content": "Build Website Hub (template picker + AI page copy)",
+    "content": "Step 3 — Important Stories per-offer auto-fill",
     "status": "completed"
   },
   {
-    "content": "Build Two-Track Marketing Plan",
+    "content": "Step 3 — Output card multi-offer rendering",
     "status": "completed"
   },
   {
-    "content": "Build 30/60/90 Calendar grid",
-    "status": "completed"
-  },
-  {
-    "content": "Build Output card + Complete Step 4 action",
-    "status": "completed"
-  },
-  {
-    "content": "Wire into PlanWorkspace routing",
+    "content": "Step 4 — Pocket Media URL field",
     "status": "completed"
   },
   {
@@ -40,7 +32,7 @@
     "status": "completed"
   },
   {
-    "content": "Update plan.md",
-    "status": "completed"
+    "content": "Plan Phase 7 (Step 5 NURTURE)",
+    "status": "in_progress"
   }
 ]

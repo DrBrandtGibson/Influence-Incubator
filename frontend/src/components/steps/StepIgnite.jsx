@@ -7,6 +7,7 @@ import {
     ArrowRight, ArrowLeft, ChevronRight, Crown
 } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
+import { Input } from "@/components/ui/input";
 import { authedFetch } from "@/lib/supabase";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -383,13 +384,27 @@ function PocketMediaEmpire({ planId, getInput, setInput }) {
                                         <div key={f.key} className={f.key === "first_5_ideas" ? "md:col-span-2" : ""}>
                                             <div className="label-eyebrow mb-1">{f.label}</div>
                                             <p className="text-[11px] text-muted-foreground mb-1.5">{f.helper}</p>
-                                            <AIAssistInput planId={planId} stepNum={STEP_NUM}
-                                                fieldKey={`pm_${c.key}_${f.key}`}
-                                                fieldLabel={`${c.name} — ${f.label}`}
-                                                subModule={`Pocket Media · ${c.name}`}
-                                                rows={f.key === "first_5_ideas" ? 5 : 2}
-                                                value={getInput(STEP_NUM, `pm_${c.key}_${f.key}`)}
-                                                onChange={(v) => setInput(STEP_NUM, `pm_${c.key}_${f.key}`, v)} />
+                                            {f.key === "url" ? (
+                                                <Input
+                                                    type="url"
+                                                    placeholder="https://"
+                                                    value={getInput(STEP_NUM, `pm_${c.key}_${f.key}`) || ""}
+                                                    onChange={(e) => setInput(STEP_NUM, `pm_${c.key}_${f.key}`, e.target.value)}
+                                                    onBlur={(e) => {
+                                                        authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: STEP_NUM, field_key: `pm_${c.key}_${f.key}`, value: e.target.value }) }).catch(() => {});
+                                                    }}
+                                                    className="h-10 rounded-xl"
+                                                    data-testid={`pm-${c.key}-url`}
+                                                />
+                                            ) : (
+                                                <AIAssistInput planId={planId} stepNum={STEP_NUM}
+                                                    fieldKey={`pm_${c.key}_${f.key}`}
+                                                    fieldLabel={`${c.name} — ${f.label}`}
+                                                    subModule={`Pocket Media · ${c.name}`}
+                                                    rows={f.key === "first_5_ideas" ? 5 : 2}
+                                                    value={getInput(STEP_NUM, `pm_${c.key}_${f.key}`)}
+                                                    onChange={(v) => setInput(STEP_NUM, `pm_${c.key}_${f.key}`, v)} />
+                                            )}
                                         </div>
                                     ))}
                                 </div>
