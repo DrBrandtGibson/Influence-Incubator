@@ -113,6 +113,19 @@ function safeParseJSON(raw) {
 // =================== TRANSFORMATIVE FRAMEWORK ===================
 function TransformativeFramework({ planId, getInput, setInput }) {
     const [busy, setBusy] = useState(false);
+    const mode = getInput(STEP_NUM, "framework_mode") || "ai"; // "ai" | "diy"
+
+    function setMode(next) {
+        setInput(STEP_NUM, "framework_mode", next);
+        persist(planId, "framework_mode", next);
+        // Initialize an empty framework when entering DIY mode if none exists yet
+        if (next === "diy" && !getInput(STEP_NUM, "framework_json")) {
+            const empty = { name: "", tagline: "", phases: [{ verb: "", name: "", transformation: "", description: "" }] };
+            const json = JSON.stringify(empty);
+            setInput(STEP_NUM, "framework_json", json);
+            persist(planId, "framework_json", json);
+        }
+    }
 
     async function buildFramework() {
         const ctx = {
@@ -155,48 +168,105 @@ function TransformativeFramework({ planId, getInput, setInput }) {
                 <figcaption className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-bronze">— {NURTURE_QUOTE.attribution}</figcaption>
             </figure>
 
-            <div className="space-y-6 mt-7">
-                {FRAMEWORK_SEED_QUESTIONS.map((q) => (
-                    <div key={q.key}>
-                        <div className="label-eyebrow mb-1">{q.label}</div>
-                        <p className="text-xs text-muted-foreground mb-1.5">{q.helper}</p>
-                        <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={q.key}
-                            fieldLabel={q.label} subModule="Transformative Framework"
-                            rows={q.key === "fw_phases_n" ? 1 : 3}
-                            placeholder={q.key === "fw_phases_n" ? "e.g. 5" : ""}
-                            value={getInput(STEP_NUM, q.key)} onChange={(v) => setInput(STEP_NUM, q.key, v)} />
-                    </div>
-                ))}
-            </div>
-
-            <div className="mt-10 dark-cinematic-panel p-7 md:p-8">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
-                    <div>
-                        <div className="label-eyebrow text-brand-gold mb-1">Build</div>
-                        <h3 className="font-serif text-2xl">Build my Transformative Framework.</h3>
-                        <p className="text-brand-cream/70 text-sm mt-1">AI will name it, tagline it, and propose your phases. Always editable.</p>
-                    </div>
-                    <Button onClick={buildFramework} disabled={busy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="build-framework-button">
-                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Build my Framework</>}
-                    </Button>
+            {/* Mode toggle */}
+            <div className="mt-7" data-testid="framework-mode-switch">
+                <div className="label-eyebrow mb-2">How do you want to build it?</div>
+                <div className="inline-flex p-1 rounded-full bg-secondary/60">
+                    <button
+                        type="button"
+                        onClick={() => setMode("ai")}
+                        className={`px-5 py-2 rounded-full text-sm transition ${mode === "ai" ? "bg-card shadow-sm font-medium" : "text-muted-foreground"}`}
+                        data-testid="framework-mode-ai"
+                    >
+                        <Sparkles className="h-4 w-4 inline mr-1.5 -mt-0.5" /> AI Build
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMode("diy")}
+                        className={`px-5 py-2 rounded-full text-sm transition ${mode === "diy" ? "bg-card shadow-sm font-medium" : "text-muted-foreground"}`}
+                        data-testid="framework-mode-diy"
+                    >
+                        DIY · Name & list it yourself
+                    </button>
                 </div>
-
-                {parsed && (
-                    <div className="mt-6 border-t border-white/10 pt-5" data-testid="framework-output">
-                        <div className="rounded-xl bg-brand-cream text-brand-charcoal p-5 md:p-6">
-                            <FrameworkDisplay
-                                parsed={parsed}
-                                phases={phases}
-                                onChange={(next) => {
-                                    const json = JSON.stringify(next);
-                                    setInput(STEP_NUM, "framework_json", json);
-                                    persist(planId, "framework_json", json);
-                                }}
-                            />
-                        </div>
-                    </div>
-                )}
+                <p className="text-xs text-muted-foreground mt-2">
+                    {mode === "ai"
+                        ? "Answer 4 quick reflections; AI proposes your framework. Always editable below."
+                        : "Skip the prompts. Start with an empty framework and fill it in by hand."}
+                </p>
             </div>
+
+            {/* AI Build: seed questions + Build button */}
+            {mode === "ai" && (
+                <>
+                    <div className="space-y-6 mt-7" data-testid="framework-seed-questions">
+                        {FRAMEWORK_SEED_QUESTIONS.map((q) => (
+                            <div key={q.key}>
+                                <div className="label-eyebrow mb-1">{q.label}</div>
+                                <p className="text-xs text-muted-foreground mb-1.5">{q.helper}</p>
+                                <AIAssistInput planId={planId} stepNum={STEP_NUM} fieldKey={q.key}
+                                    fieldLabel={q.label} subModule="Transformative Framework"
+                                    rows={q.key === "fw_phases_n" ? 1 : 3}
+                                    placeholder={q.key === "fw_phases_n" ? "e.g. 5" : ""}
+                                    value={getInput(STEP_NUM, q.key)} onChange={(v) => setInput(STEP_NUM, q.key, v)} />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-10 dark-cinematic-panel p-7 md:p-8">
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+                            <div>
+                                <div className="label-eyebrow text-brand-gold mb-1">Build</div>
+                                <h3 className="font-serif text-2xl">Build my Transformative Framework.</h3>
+                                <p className="text-brand-cream/70 text-sm mt-1">AI will name it, tagline it, and propose your phases. Always editable.</p>
+                            </div>
+                            <Button onClick={buildFramework} disabled={busy} className="cta-red rounded-full h-11 px-5 shrink-0" data-testid="build-framework-button">
+                                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-4 w-4 mr-2" /> Build my Framework</>}
+                            </Button>
+                        </div>
+
+                        {parsed && (
+                            <div className="mt-6 border-t border-white/10 pt-5" data-testid="framework-output">
+                                <div className="rounded-xl bg-brand-cream text-brand-charcoal p-5 md:p-6">
+                                    <FrameworkDisplay
+                                        parsed={parsed}
+                                        phases={phases}
+                                        onChange={(next) => {
+                                            const json = JSON.stringify(next);
+                                            setInput(STEP_NUM, "framework_json", json);
+                                            persist(planId, "framework_json", json);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {/* DIY: editor only, no AI panel */}
+            {mode === "diy" && (
+                <div className="mt-7 editorial-card p-5 md:p-6" data-testid="framework-diy-editor">
+                    {parsed ? (
+                        <FrameworkDisplay
+                            parsed={parsed}
+                            phases={phases}
+                            onChange={(next) => {
+                                const json = JSON.stringify(next);
+                                setInput(STEP_NUM, "framework_json", json);
+                                persist(planId, "framework_json", json);
+                            }}
+                        />
+                    ) : (
+                        <div className="text-center py-6">
+                            <p className="text-sm text-muted-foreground mb-3">Click below to start your framework from scratch.</p>
+                            <Button onClick={() => setMode("diy")} variant="outline" className="rounded-full" data-testid="framework-diy-start">
+                                <Plus className="h-4 w-4 mr-1.5" /> Start blank framework
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
         </Section>
     );
 }

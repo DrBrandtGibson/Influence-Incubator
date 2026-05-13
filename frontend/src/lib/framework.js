@@ -633,3 +633,63 @@ export const NURTURE_QUOTE = {
     attribution: "Russell Brunson"
 };
 
+
+// ============ STEP 6 — EXPAND Your Influence ============
+
+// ---- Dream 100 ----
+export const DREAM_100_SEED_PROMPTS = [
+    { key: "d100_niche",       label: "Your niche & audience",   helper: "One line: who you serve and what you stand for." },
+    { key: "d100_archetypes",  label: "Archetypes to court",     helper: "The 3–5 types of people, brands or institutions whose attention would change everything. (Podcast hosts? Bestselling authors? Specific clinic owners?)" }
+];
+
+export const DREAM_100_CHANNELS = [
+    "Podcast Host", "Newsletter", "Author / Book", "YouTube Creator", "Conference / Event",
+    "Brand / Company", "Investor / VC", "Press / Journalist", "Community / Group", "Other"
+];
+
+export const DREAM_100_STATUSES = [
+    { key: "cold",        label: "Cold",            color: "bg-secondary text-foreground/70 border-border" },
+    { key: "researching", label: "Researching",     color: "bg-blue-100 text-blue-900 border-blue-300" },
+    { key: "engaging",    label: "Engaging",        color: "bg-amber-100 text-amber-900 border-amber-300" },
+    { key: "warm",        label: "Warm",            color: "bg-emerald-100 text-emerald-900 border-emerald-300" },
+    { key: "collab",      label: "Collaborating",   color: "bg-brand-gold/20 text-brand-bronze border-brand-gold" }
+];
+
+// ---- Live Events & Challenges ----
+export const EVENT_TYPES = [
+    { key: "webinar",   name: "Webinar",        helper: "60–90 min teaching → soft offer. Highest-leverage starter event." },
+    { key: "challenge", name: "Multi-day Challenge", helper: "5- or 10-day sprint with daily lessons + a community room. Highest conversion to continuity." },
+    { key: "workshop",  name: "Workshop",       helper: "2–4 hour deep teach. Live or in-person. Premium pricing." },
+    { key: "summit",    name: "Summit",         helper: "20+ expert interviews. Best for list-building." },
+    { key: "retreat",   name: "Retreat",        helper: "Multi-day, in-person, premium. The relationship multiplier." }
+];
+
+export const EVENT_FIELDS = [
+    { key: "name",          label: "Event Name",            helper: "What you'd put on the registration page." },
+    { key: "format",        label: "Format & Length",       helper: "e.g. 5 days, 30 min/day, video lessons + nightly group call." },
+    { key: "promise",       label: "Promise to attendees",  helper: "One sentence: what they'll walk away with." },
+    { key: "hook",          label: "Registration Hook",     helper: "The headline / subject line that fills seats." },
+    { key: "outcome",       label: "Attendee Outcome",      helper: "The specific shift they experience by the end." },
+    { key: "conversion",    label: "Conversion Path",       helper: "What you invite them into after — your offer, continuity, or next event." }
+];
+
+// ---- Book Builder ----
+export const BOOK_SEED_PROMPTS = [
+    { key: "book_reader",         label: "Reader",         helper: "Who picks this book up — and what state of life are they in?" },
+    { key: "book_promise",        label: "Promise",        helper: "By the last page, the reader is _____." },
+    { key: "book_unique_lens",    label: "Your unique lens", helper: "What you see / believe that almost no one else writing in this space does." },
+    { key: "book_chapters_n",     label: "Chapter count (8–15)", helper: "Most influencer books land at 9–12 chapters. Trust your scope." }
+];
+
+// ---- Intros / Copy ----
+export const EXPAND_INTROS = {
+    dream100: "Russell Brunson's Dream 100 is the most leveraged marketing list you'll ever build: the 100 people or brands whose attention would change your business overnight. Build it slowly, intentionally — and warm them through real relationship, not cold pitches.",
+    events:   "Live events are the trust accelerator. A multi-day challenge or workshop will produce more revenue in two weeks than three months of evergreen content. Pick one type, design it well, ship it.",
+    book:     "The book is your business card raised to the tenth power. Not for royalties — for authority, lead generation, and forever-reach. We'll outline yours so writing it becomes a series of small, doable sprints."
+};
+
+export const EXPAND_QUOTE = {
+    text: "Your network is your net worth.",
+    attribution: "Porter Gale"
+};
+

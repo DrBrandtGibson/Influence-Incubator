@@ -1,46 +1,38 @@
 [
   {
-    "content": "Fix HJ overlay to 12 × 30°",
+    "content": "Step 5 — DIY vs AI Build toggle",
     "status": "completed"
   },
   {
-    "content": "Add Step 5 framework constants",
+    "content": "Phase 8 Step 6 framework constants",
     "status": "completed"
   },
   {
-    "content": "Create StepNurture.jsx with 5 tabs",
+    "content": "Create StepExpand.jsx with 4 tabs",
     "status": "completed"
   },
   {
-    "content": "Build Transformative Framework (AI-guided phase builder)",
+    "content": "Build Dream 100 CRM",
     "status": "completed"
   },
   {
-    "content": "Build Continuity Program + name suggestions",
+    "content": "Build Live Events & Challenges",
     "status": "completed"
   },
   {
-    "content": "Build SaaS Opportunity (AI recommends 1–3 options)",
+    "content": "Build Book Builder",
     "status": "completed"
   },
   {
-    "content": "Build Community Design (ClickFunnels-style)",
+    "content": "Build Output card",
     "status": "completed"
   },
   {
-    "content": "Build Output card + complete Step 5",
-    "status": "completed"
-  },
-  {
-    "content": "Wire StepNurture into PlanWorkspace",
+    "content": "Wire StepExpand into PlanWorkspace",
     "status": "completed"
   },
   {
     "content": "Lint + smoke test",
-    "status": "completed"
-  },
-  {
-    "content": "Update plan.md",
     "status": "completed"
   }
 ]
