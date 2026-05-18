@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { authedFetch } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -7,16 +7,90 @@ import { Plus, Loader2, FileText, Lock, Sparkles, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { STEPS } from "@/lib/steps";
+import SubscriptionPanel from "@/components/plans/SubscriptionPanel";
 
 export default function Dashboard() {
-    const { profile, isPro } = useAuth();
+    const { profile, isPro, refreshProfile } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [plans, setPlans] = useState(null);
     const [creating, setCreating] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const sessionPolledRef = useRef(null);
 
     useEffect(() => {
         document.title = "Your Plans — Influence Incubator";
         loadPlans();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Handle ?session_id after returning from Stripe Checkout
+    useEffect(() => {
+        const sid = searchParams.get("session_id");
+        if (!sid || sessionPolledRef.current === sid) return;
+        sessionPolledRef.current = sid;
+
+        let cancelled = false;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 6; // ~12s total
+        const INTERVAL_MS = 2000;
+
+        async function poll() {
+            if (cancelled) return;
+            attempts += 1;
+            setConfirming(true);
+            try {
+                const res = await authedFetch(`/billing/session/${sid}`);
+                if (!res.ok) {
+                    // 403/404 — clear param and stop
+                    if (res.status === 403 || res.status === 404) {
+                        setSearchParams({}, { replace: true });
+                        setConfirming(false);
+                        return;
+                    }
+                    throw new Error("status check failed");
+                }
+                const j = await res.json();
+                if (j.payment_status === "paid" || j.is_pro) {
+                    toast.success("Welcome to Pro!", {
+                        description: j.package === "lifetime"
+                            ? "Lifetime access unlocked — every step is yours, forever."
+                            : "Monthly Pro is live — all 7 steps unlocked. Cancel anytime.",
+                    });
+                    await refreshProfile();
+                    setSearchParams({}, { replace: true });
+                    setConfirming(false);
+                    return;
+                }
+                if (j.status === "expired" || attempts >= MAX_ATTEMPTS) {
+                    toast.error("We couldn't confirm your payment.", {
+                        description: "If you completed checkout, refresh in a moment — webhooks finalize within seconds.",
+                    });
+                    setSearchParams({}, { replace: true });
+                    setConfirming(false);
+                    return;
+                }
+                setTimeout(poll, INTERVAL_MS);
+            } catch (e) {
+                if (attempts >= MAX_ATTEMPTS) {
+                    setSearchParams({}, { replace: true });
+                    setConfirming(false);
+                    return;
+                }
+                setTimeout(poll, INTERVAL_MS);
+            }
+        }
+        poll();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
+
+    // Handle ?canceled=1 from pricing cancel URL
+    useEffect(() => {
+        if (searchParams.get("canceled")) {
+            toast.message("Checkout canceled.", { description: "No charges were made. You can try again any time." });
+            setSearchParams({}, { replace: true });
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -42,6 +116,17 @@ export default function Dashboard() {
 
     return (
         <div className="container-readable py-12 md:py-16" data-testid="dashboard-page">
+            {confirming && (
+                <div
+                    className="fixed inset-x-0 top-16 z-40 flex items-center justify-center pointer-events-none"
+                    data-testid="checkout-confirming-banner"
+                >
+                    <div className="bg-brand-charcoal text-brand-cream rounded-full px-4 py-2 text-xs uppercase tracking-[0.18em] inline-flex items-center gap-2 shadow-lg pointer-events-auto">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-gold" />
+                        Confirming your payment…
+                    </div>
+                </div>
+            )}
             <div className="flex items-end justify-between mb-10">
                 <div>
                     <div className="label-eyebrow mb-2 text-brand-bronze">Your workspace</div>
@@ -52,6 +137,8 @@ export default function Dashboard() {
                     {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-2" /> New Plan</>}
                 </Button>
             </div>
+
+            <SubscriptionPanel />
 
             {/* Plan list */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="plans-grid">

@@ -303,12 +303,50 @@ For each step 5–7:
 
 ---
 
-### Phase 11 — Stripe Paywall (Deferred until Phase 10 done) 🔜 UPCOMING
-- Pricing checkout for:
-  - Lifetime $97
-  - Monthly $19/mo
-- Webhooks (idempotent via `stripe_events`) update `profiles.subscription_status`.
-- Customer portal, refund policy page, guarantee messaging.
+### Phase 11 — Stripe Paywall ✅ COMPLETE
+**Status:** Both Lifetime $97 (one-time) and Monthly $19/mo (subscription) end-to-end working via Stripe Checkout. Self-serve refunds, subscription cancel, and webhooks all live.
+
+**Wiring / Files:**
+- Backend router: `backend/routers/billing.py` (uses raw `stripe` SDK, not `emergentintegrations` — needed full subscription mode + refund support).
+  - `GET  /api/billing/config` — public; reports `enabled`, package metadata, refund window.
+  - `GET  /api/billing/me` — auth; returns subscription state, refund eligibility, days remaining.
+  - `POST /api/billing/checkout` — auth; creates `mode=payment` for Lifetime, `mode=subscription` for Monthly. Ensures Stripe Customer linked to `profiles.stripe_customer_id`.
+  - `GET  /api/billing/session/{session_id}` — auth; polls Stripe Checkout Session, reconciles `profiles` on `payment_status==paid` (idempotent).
+  - `POST /api/billing/refund` — auth; refunds latest succeeded PaymentIntent + cancels active subscription; downgrades to `free`. Gated by 7-day window from `purchased_at`.
+  - `POST /api/billing/cancel-subscription` — auth; cancels at period end, Pro retained until `pro_until`.
+  - `POST /api/webhook/stripe` — public; handles `checkout.session.completed`, `invoice.paid`, `invoice.payment_succeeded`, `customer.subscription.deleted`, `charge.refunded`. Idempotent via `stripe_events.stripe_event_id` unique constraint.
+- Server-side product/price definitions seeded via API in Stripe test mode:
+  - `price_1TYL51GOHx8em2zze7r1MV7C` = Lifetime $97
+  - `price_1TYL51GOHx8em2zzmBm0c4Un` = Monthly $19/mo
+- ENV (in `backend/.env`):
+  - `STRIPE_SECRET_KEY` — user-provided test key
+  - `STRIPE_PUBLISHABLE_KEY` — user-provided
+  - `STRIPE_WEBHOOK_SECRET` — currently empty (webhook accepts unsigned in dev; **production must populate** this after adding the webhook in Stripe Dashboard).
+  - `STRIPE_PRICE_LIFETIME`, `STRIPE_PRICE_MONTHLY`
+- Frontend:
+  - `frontend/src/lib/useStartCheckout.js` — auth-aware hook that POSTs to `/billing/checkout` and redirects to Stripe Checkout URL.
+  - `frontend/src/pages/Pricing.jsx` — rebuilt to use the hook; shows "Redirecting to checkout…" spinner; if user already Pro, sends them to Dashboard.
+  - `frontend/src/pages/Dashboard.jsx` — handles `?session_id=` polling on return from Stripe (12s window, 2s interval); shows "Welcome to Pro!" toast; handles `?canceled=1` from Pricing cancel URL. Also embeds `SubscriptionPanel`.
+  - `frontend/src/components/plans/SubscriptionPanel.jsx` — Pro users see active plan + refund window + "Request refund" / "Cancel subscription" (Monthly) actions with confirm dialogs. Free users see an inline upgrade nudge.
+
+**Verified end-to-end (real Stripe test mode):**
+- Free user → click "Get Lifetime Access" → redirects to Stripe Checkout ($97 USD, sandbox banner, customer email pre-filled).
+- Webhook `checkout.session.completed` → profile activated to `pro_lifetime`, `purchased_at` set, `stripe_customer_id` persisted; idempotent on replay.
+- Return to `/dashboard?session_id=...` → 12s polling confirms activation, "Welcome to Pro!" toast, URL cleaned.
+- `SubscriptionPanel` shows "Lifetime Pro · Active · Refund window: 7 days left".
+- Click "Request refund" → confirm dialog → Stripe `Refund.create` succeeds → toast "Refund issued for $97.00" → profile downgraded to `free` → top nav flips back to "Free" + Upgrade button.
+- Monthly: subscription mode → `pro_until` correctly populated via `current_period_end` (handles new Stripe API where it lives on subscription items); `cancel-subscription` returns `ends_at`; `invoice.paid` extends `pro_until` on renewal.
+- Idempotency: replaying webhook events returns `duplicate: true`, profile state unchanged.
+- Edge cases: invalid package → 400, bad origin → 400, unauthenticated → 401, foreign session_id → 403, double-refund → 400, re-checkout when Pro → 409.
+
+**⚠️ Production handoff for user:**
+1. Replace `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` with live keys when ready.
+2. In Stripe Dashboard → Developers → Webhooks → Add endpoint:
+   - URL: `https://pro-unlock-3.preview.emergentagent.com/api/webhook/stripe`
+   - Events: `checkout.session.completed`, `invoice.paid`, `invoice.payment_succeeded`, `customer.subscription.deleted`, `charge.refunded`
+   - Copy the signing secret into `STRIPE_WEBHOOK_SECRET` in `backend/.env` and restart backend.
+3. Optionally re-seed Lifetime/Monthly Price IDs in live mode and update `STRIPE_PRICE_LIFETIME` / `STRIPE_PRICE_MONTHLY`.
+
 
 ## 3. Next Actions (Immediate)
 1) **Flip your test account to Pro** in Supabase so Steps 3–4 unlock end-to-end:

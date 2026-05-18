@@ -1,26 +1,38 @@
 [
   {
-    "content": "Register exports router in server.py",
+    "content": "Add STRIPE_SECRET_KEY + STRIPE_PUBLISHABLE_KEY to backend .env",
     "status": "completed"
   },
   {
-    "content": "Test backend export endpoints (PDF + DOCX) with curl",
+    "content": "Provision Stripe Products + Prices ($97 lifetime, $19/mo monthly) via API",
     "status": "completed"
   },
   {
-    "content": "Build ExportMenu component (PDF + Word download with Pro gating)",
+    "content": "Build /app/backend/routers/billing.py (checkout + status + refund + cancel + webhook)",
     "status": "completed"
   },
   {
-    "content": "Integrate ExportMenu into PlanWorkspace top bar",
+    "content": "Wire billing router into server.py",
     "status": "completed"
   },
   {
-    "content": "End-to-end frontend test via screenshot",
+    "content": "Update Pricing.jsx to call checkout API",
     "status": "completed"
   },
   {
-    "content": "Update plan.md to mark Phase 10 complete",
+    "content": "Add ?session_id polling + welcome toast on Dashboard",
+    "status": "completed"
+  },
+  {
+    "content": "Add billing/subscription/refund section to Dashboard",
+    "status": "completed"
+  },
+  {
+    "content": "End-to-end test with Stripe test card 4242",
+    "status": "completed"
+  },
+  {
+    "content": "Update plan.md to mark Phase 11 complete",
     "status": "completed"
   }
 ]

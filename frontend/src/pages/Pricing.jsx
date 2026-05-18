@@ -1,11 +1,25 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Lock, Check, ArrowLeft, ShieldCheck, Sparkles } from "lucide-react";
+import { Check, ArrowLeft, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useStartCheckout } from "@/lib/useStartCheckout";
 
 export default function Pricing() {
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isPro } = useAuth();
+    const { start, loading } = useStartCheckout();
+
+    function onCta(pkg) {
+        if (!isAuthenticated) {
+            navigate("/signup?return=/pricing");
+            return;
+        }
+        if (isPro) {
+            navigate("/dashboard");
+            return;
+        }
+        start(pkg);
+    }
 
     return (
         <div data-testid="pricing-page" className="min-h-screen bg-background">
@@ -24,10 +38,11 @@ export default function Pricing() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                     <Card
                         recommended
+                        pkg="lifetime"
                         title="Lifetime"
                         price="$97"
                         cadence="one-time, forever"
-                        ctaLabel="Get Lifetime Access"
+                        ctaLabel={isPro ? "You have Pro access" : "Get Lifetime Access"}
                         features={[
                             "All 7 steps unlocked, forever",
                             "Unlimited plans",
@@ -36,13 +51,16 @@ export default function Pricing() {
                             "Plan version history",
                             "7-day money-back guarantee"
                         ]}
-                        onClick={() => isAuthenticated ? alert("Stripe checkout enabled in Phase 11.") : navigate("/signup")}
+                        loading={loading === "lifetime"}
+                        disabled={!!loading || isPro}
+                        onClick={() => onCta("lifetime")}
                     />
                     <Card
+                        pkg="monthly"
                         title="Monthly"
                         price="$19"
                         cadence="per month, cancel anytime"
-                        ctaLabel="Start Monthly"
+                        ctaLabel={isPro ? "You have Pro access" : "Start Monthly"}
                         features={[
                             "All 7 steps unlocked",
                             "Unlimited plans",
@@ -51,7 +69,9 @@ export default function Pricing() {
                             "Plan version history",
                             "7-day money-back guarantee"
                         ]}
-                        onClick={() => isAuthenticated ? alert("Stripe checkout enabled in Phase 11.") : navigate("/signup")}
+                        loading={loading === "monthly"}
+                        disabled={!!loading || isPro}
+                        onClick={() => onCta("monthly")}
                     />
                 </div>
                 <div className="mt-10 flex items-center justify-center gap-3 text-sm text-muted-foreground">
@@ -63,7 +83,7 @@ export default function Pricing() {
     );
 }
 
-function Card({ title, price, cadence, features, ctaLabel, onClick, recommended }) {
+function Card({ title, price, cadence, features, ctaLabel, onClick, recommended, loading, disabled, pkg }) {
     return (
         <div className={`relative editorial-card p-8 ${recommended ? "ring-2 ring-brand-gold" : ""}`} data-testid={`pricing-card-${title.toLowerCase()}`}>
             {recommended && (
@@ -81,8 +101,18 @@ function Card({ title, price, cadence, features, ctaLabel, onClick, recommended 
                     <li key={i} className="flex gap-3"><Check className="h-4 w-4 mt-0.5 text-brand-gold" /><span>{f}</span></li>
                 ))}
             </ul>
-            <Button onClick={onClick} className={`mt-7 w-full h-11 rounded-xl ${recommended ? "cta-red" : ""}`} data-testid={`pricing-${title.toLowerCase()}-cta-button`}>
-                <Sparkles className="h-4 w-4 mr-2" /> {ctaLabel}
+            <Button
+                onClick={onClick}
+                disabled={disabled}
+                className={`mt-7 w-full h-11 rounded-xl ${recommended ? "cta-red" : ""}`}
+                data-testid={`pricing-${title.toLowerCase()}-cta-button`}
+                data-package={pkg}
+            >
+                {loading ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Redirecting to checkout…</>
+                ) : (
+                    <><Sparkles className="h-4 w-4 mr-2" /> {ctaLabel}</>
+                )}
             </Button>
         </div>
     );
