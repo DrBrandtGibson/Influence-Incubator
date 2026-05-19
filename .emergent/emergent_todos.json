@@ -1,38 +1,30 @@
 [
   {
-    "content": "Add STRIPE_SECRET_KEY + STRIPE_PUBLISHABLE_KEY to backend .env",
+    "content": "CRITICAL: Initialize session=None in billing.py to silence possibly-unbound warnings",
     "status": "completed"
   },
   {
-    "content": "Provision Stripe Products + Prices ($97 lifetime, $19/mo monthly) via API",
+    "content": "Refactor stripe_webhook: extract per-event handlers (reduce complexity 24→8)",
     "status": "completed"
   },
   {
-    "content": "Build /app/backend/routers/billing.py (checkout + status + refund + cancel + webhook)",
+    "content": "CRITICAL: Fix AuthContext useEffect deps + log signup errors",
     "status": "completed"
   },
   {
-    "content": "Wire billing router into server.py",
+    "content": "CRITICAL: Fix Dashboard useEffect deps (wrap loadPlans in useCallback)",
     "status": "completed"
   },
   {
-    "content": "Update Pricing.jsx to call checkout API",
+    "content": "CRITICAL: Fix PlanWorkspace catch blocks log errors",
     "status": "completed"
   },
   {
-    "content": "Add ?session_id polling + welcome toast on Dashboard",
+    "content": "CRITICAL: Fix StepDefine.jsx useEffect — add catch logging + clear comment",
     "status": "completed"
   },
   {
-    "content": "Add billing/subscription/refund section to Dashboard",
-    "status": "completed"
-  },
-  {
-    "content": "End-to-end test with Stripe test card 4242",
-    "status": "completed"
-  },
-  {
-    "content": "Update plan.md to mark Phase 11 complete",
+    "content": "Verify all fixes by running services + lint check",
     "status": "completed"
   }
 ]

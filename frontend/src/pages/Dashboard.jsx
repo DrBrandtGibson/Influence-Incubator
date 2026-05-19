@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { authedFetch } from "@/lib/supabase";
@@ -18,11 +18,23 @@ export default function Dashboard() {
     const [confirming, setConfirming] = useState(false);
     const sessionPolledRef = useRef(null);
 
+    const loadPlans = useCallback(async () => {
+        try {
+            const res = await authedFetch("/plans");
+            if (!res.ok) throw new Error("Failed to load plans.");
+            const data = await res.json();
+            setPlans(data.plans || []);
+        } catch (e) {
+            console.error("Dashboard.loadPlans failed:", e);
+            toast.error(e.message || "Could not load plans.");
+            setPlans([]);
+        }
+    }, []);
+
     useEffect(() => {
         document.title = "Your Plans — Influence Incubator";
         loadPlans();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [loadPlans]);
 
     // Handle ?session_id after returning from Stripe Checkout
     useEffect(() => {
@@ -72,6 +84,7 @@ export default function Dashboard() {
                 }
                 setTimeout(poll, INTERVAL_MS);
             } catch (e) {
+                console.warn("Dashboard.poll error:", e);
                 if (attempts >= MAX_ATTEMPTS) {
                     setSearchParams({}, { replace: true });
                     setConfirming(false);
@@ -82,29 +95,17 @@ export default function Dashboard() {
         }
         poll();
         return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams]);
+    }, [searchParams, setSearchParams, refreshProfile]);
 
-    // Handle ?canceled=1 from pricing cancel URL
+    // Handle ?canceled=1 from pricing cancel URL (run once on mount)
     useEffect(() => {
         if (searchParams.get("canceled")) {
             toast.message("Checkout canceled.", { description: "No charges were made. You can try again any time." });
             setSearchParams({}, { replace: true });
         }
+        // Intentionally only runs on mount: we read params once to surface a one-shot toast.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    async function loadPlans() {
-        try {
-            const res = await authedFetch("/plans");
-            if (!res.ok) throw new Error("Failed to load plans.");
-            const data = await res.json();
-            setPlans(data.plans || []);
-        } catch (e) {
-            toast.error(e.message || "Could not load plans.");
-            setPlans([]);
-        }
-    }
 
     function startNewPlan() {
         if (!isPro && (plans?.length ?? 0) >= 1) {

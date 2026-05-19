@@ -14,10 +14,11 @@ export function AuthProvider({ children }) {
             if (res.ok) {
                 const data = await res.json();
                 setProfile(data);
+            } else {
+                console.warn("refreshProfile non-OK response:", res.status);
             }
         } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error("refreshProfile failed", e);
+            console.error("refreshProfile failed:", e);
         }
     }, []);
 
@@ -61,7 +62,12 @@ export function AuthProvider({ children }) {
         });
         if (!res.ok) {
             let msg = "Signup failed.";
-            try { const j = await res.json(); msg = j.detail || msg; } catch {}
+            try {
+                const j = await res.json();
+                msg = j.detail || msg;
+            } catch (parseErr) {
+                console.warn("Could not parse signup error body:", parseErr);
+            }
             const err = new Error(msg);
             err.status = res.status;
             throw err;

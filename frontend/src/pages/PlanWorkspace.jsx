@@ -51,6 +51,7 @@ export default function PlanWorkspace() {
             }
             setInputs(map);
         } catch (e) {
+            console.error("PlanWorkspace.loadPlan failed:", e);
             toast.error(e.message);
         } finally {
             setLoading(false);
@@ -80,6 +81,7 @@ export default function PlanWorkspace() {
             });
             await authedFetch(`/plans/${planId}`, { method: "PATCH", body: JSON.stringify({ current_step: stepNum }) });
         } catch (e) {
+            console.error("PlanWorkspace.markStepStatus failed:", e);
             toast.error("Could not update step status");
         }
     }

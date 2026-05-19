@@ -305,6 +305,7 @@ async def create_checkout(body: CheckoutRequest, user: CurrentUser = Depends(req
     success_url = f"{origin}/dashboard?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{origin}/pricing?canceled=1"
 
+    session = None
     try:
         session_args = dict(
             mode=config["mode"],
@@ -331,16 +332,22 @@ async def create_checkout(body: CheckoutRequest, user: CurrentUser = Depends(req
         logger.error(f"Stripe checkout create failed: {e}")
         raise HTTPException(status_code=502, detail=f"Stripe error: {e.user_message or str(e)}")
 
+    if session is None:
+        raise HTTPException(status_code=502, detail="Stripe did not return a session.")
     return CheckoutResponse(url=session.url, session_id=session.id)
 
 
 @router.get("/session/{session_id}", response_model=SessionStatusResponse)
 async def get_session_status(session_id: str, user: CurrentUser = Depends(require_user)):
     _ensure_configured()
+    session = None
     try:
         session = stripe.checkout.Session.retrieve(session_id)
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=404, detail=f"Session not found: {e.user_message or str(e)}")
+
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
 
     # Authorization: only the owner can read their own session
     if session.client_reference_id and session.client_reference_id != user.id:
@@ -477,6 +484,76 @@ async def cancel_subscription(user: CurrentUser = Depends(require_user)):
 webhook_router = APIRouter(tags=["billing"])
 
 
+def _profile_id_for_customer(customer_id: str) -> Optional[str]:
+    """Return profile.id for a Stripe customer, or None."""
+    if not customer_id:
+        return None
+    res = admin.table("profiles").select("id,subscription_status").eq("stripe_customer_id", customer_id).limit(1).execute()
+    if not res.data:
+        return None
+    return res.data[0]["id"]
+
+
+def _handle_invoice_paid(data_obj: dict) -> None:
+    """Extend pro_until on monthly renewal."""
+    sub_id = data_obj.get("subscription")
+    customer_id = data_obj.get("customer")
+    if not (sub_id and customer_id):
+        return
+    uid = _profile_id_for_customer(customer_id)
+    if not uid:
+        return
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+        period_end = _subscription_period_end(sub)
+        if not period_end:
+            return
+        admin.table("profiles").update({
+            "subscription_status": "pro_monthly",
+            "stripe_subscription_id": sub_id,
+            "pro_until": datetime.fromtimestamp(period_end, tz=timezone.utc).isoformat(),
+        }).eq("id", uid).execute()
+    except Exception as e:
+        logger.warning(f"invoice.paid handle failed for sub={sub_id}: {e}")
+
+
+def _handle_subscription_deleted(data_obj: dict) -> None:
+    customer_id = data_obj.get("customer")
+    if not customer_id:
+        return
+    res = admin.table("profiles").select("id,subscription_status").eq("stripe_customer_id", customer_id).limit(1).execute()
+    if not res.data:
+        return
+    if res.data[0].get("subscription_status") == "pro_monthly":
+        _downgrade_to_free(res.data[0]["id"], reason="subscription_deleted")
+
+
+def _handle_charge_refunded(data_obj: dict) -> None:
+    customer_id = data_obj.get("customer")
+    if not customer_id:
+        return
+    uid = _profile_id_for_customer(customer_id)
+    if uid:
+        _downgrade_to_free(uid, reason="charge_refunded")
+
+
+WEBHOOK_HANDLERS = {
+    "checkout.session.completed": lambda obj: _activate_pro_from_session(obj),
+    "invoice.paid": _handle_invoice_paid,
+    "invoice.payment_succeeded": _handle_invoice_paid,
+    "customer.subscription.deleted": _handle_subscription_deleted,
+    "charge.refunded": _handle_charge_refunded,
+}
+
+
+def _parse_webhook(payload: bytes, signature: Optional[str]) -> dict:
+    """Verify signature (when configured) and return the event dict."""
+    if STRIPE_WEBHOOK_SECRET:
+        return stripe.Webhook.construct_event(payload, signature, STRIPE_WEBHOOK_SECRET)
+    import json as _json
+    return _json.loads(payload.decode("utf-8"))
+
+
 @webhook_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events idempotently.
@@ -488,11 +565,7 @@ async def stripe_webhook(request: Request):
     sig = request.headers.get("stripe-signature")
 
     try:
-        if STRIPE_WEBHOOK_SECRET:
-            event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-        else:
-            import json as _json
-            event = _json.loads(payload.decode("utf-8"))
+        event = _parse_webhook(payload, sig)
     except (ValueError, stripe.error.SignatureVerificationError) as e:
         logger.warning(f"Webhook signature verification failed: {e}")
         raise HTTPException(status_code=400, detail="Invalid signature")
@@ -505,45 +578,14 @@ async def stripe_webhook(request: Request):
     if _is_event_processed(event_id):
         return {"received": True, "duplicate": True}
 
+    handler = WEBHOOK_HANDLERS.get(event_type)
+    if handler is None:
+        # Unhandled event types are still marked as processed to avoid retry storms.
+        _mark_event_processed(event_id, event_type, data_obj if isinstance(data_obj, dict) else {})
+        return {"received": True, "ignored": event_type}
+
     try:
-        if event_type == "checkout.session.completed":
-            _activate_pro_from_session(data_obj)
-
-        elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
-            # Monthly renewals — extend pro_until
-            sub_id = data_obj.get("subscription")
-            customer_id = data_obj.get("customer")
-            if sub_id and customer_id:
-                # Find profile by customer id
-                res = admin.table("profiles").select("id").eq("stripe_customer_id", customer_id).limit(1).execute()
-                if res.data:
-                    uid = res.data[0]["id"]
-                    try:
-                        sub = stripe.Subscription.retrieve(sub_id)
-                        period_end = _subscription_period_end(sub)
-                        if period_end:
-                            admin.table("profiles").update({
-                                "subscription_status": "pro_monthly",
-                                "stripe_subscription_id": sub_id,
-                                "pro_until": datetime.fromtimestamp(period_end, tz=timezone.utc).isoformat(),
-                            }).eq("id", uid).execute()
-                    except Exception as e:
-                        logger.warning(f"invoice.paid handle failed: {e}")
-
-        elif event_type == "customer.subscription.deleted":
-            customer_id = data_obj.get("customer")
-            if customer_id:
-                res = admin.table("profiles").select("id,subscription_status").eq("stripe_customer_id", customer_id).limit(1).execute()
-                if res.data and res.data[0].get("subscription_status") == "pro_monthly":
-                    _downgrade_to_free(res.data[0]["id"], reason="subscription_deleted")
-
-        elif event_type == "charge.refunded":
-            customer_id = data_obj.get("customer")
-            if customer_id:
-                res = admin.table("profiles").select("id").eq("stripe_customer_id", customer_id).limit(1).execute()
-                if res.data:
-                    _downgrade_to_free(res.data[0]["id"], reason="charge_refunded")
-
+        handler(data_obj)
         _mark_event_processed(event_id, event_type, data_obj if isinstance(data_obj, dict) else {})
     except Exception as e:
         logger.error(f"Webhook handler error for {event_type}: {e}")

@@ -648,12 +648,17 @@ function DeepWhySection({ planId, getInput, setInput }) {
     const mtp = getInput(1, "mtp_statement") || "";
 
     // Initialize starter from MTP once (only if user hasn't already saved their own).
+    // Intentionally runs on mount only — we read the latest MTP via the
+    // getInput closure at mount-time to pre-fill the starter.
     useEffect(() => {
         const cur = getInput(1, "why_starter");
         if (!cur && mtp) {
             setInput(1, "why_starter", mtp);
-            authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "why_starter", value: mtp }) });
+            authedFetch(`/plans/${planId}/inputs`, { method: "POST", keepalive: true, body: JSON.stringify({ step_num: 1, field_key: "why_starter", value: mtp }) }).catch((e) => {
+                console.warn("DeepWhy starter persist failed:", e);
+            });
         }
+    // Mount-only: we deliberately do not re-run when MTP or planId changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
