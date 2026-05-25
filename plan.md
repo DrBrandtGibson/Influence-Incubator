@@ -303,7 +303,56 @@ For each step 5–7:
 
 ---
 
+### Phase 11.5 — ClickFunnels 2.0 Integration ✅ COMPLETE
+**Status:** Bi-directional sync live against the real Influence Incubator workspace (id=7895).
+
+**Wiring / Files:**
+- Service: `backend/services/clickfunnels.py`
+  - HTTPX async client against `https://influenceincubator.myclickfunnels.com/api/v2`.
+  - `upsert_contact(email, full_name)` — `GET /workspaces/{wid}/contacts?filter[email_address]=...` → if missing, `POST /workspaces/{wid}/contacts` with `{contact:{email_address,first_name,last_name}}`. Idempotent by email.
+  - `find_or_create_tag(name)` — `GET /workspaces/{wid}/contacts/tags?filter[name]=...` → if missing, `POST /workspaces/{wid}/contacts/tags`. In-process tag-id cache to avoid repeat lookups.
+  - `apply_tag(contact_id, name)` — `POST /contacts/{cid}/applied_tags` with `{contacts_applied_tag:{tag_id}}`. Re-applying is a no-op in CF.
+  - `sync_signup` / `sync_purchase` / `sync_refund` — async helpers that compose `upsert_contact` + `apply_tag` calls behind `_safe_run` (errors logged, never propagate).
+  - `verify_signature(body, headers)` — HMAC-SHA256 of `f"{t}.{body}"` keyed by `CLICKFUNNELS_WEBHOOK_SECRET`. 600s tolerance, signature header forms `t=...,v1=...` or `x-cf-signature*`. Empty secret = dev mode (logs warning, accepts unsigned).
+  - `parse_event(payload)` — normalizes order/payment events to `{event_id, event_type, email, full_name, contact_id, amount_cents, currency, is_purchase}`. Probes multiple common payload shapes.
+- Inbound webhook router: `backend/routers/clickfunnels.py`
+  - `POST /api/webhook/clickfunnels`
+  - Flow: verify sig → parse event → idempotency check (bounded in-memory set) → background-task `_process_purchase`:
+    - Find Supabase user by email (profiles fast-path, then auth-pagination fallback).
+    - If missing, `admin.auth.admin.create_user({email, password=random, email_confirm: True, user_metadata: {source: clickfunnels_purchase}})`.
+    - Activate Pro: `subscription_status=pro_lifetime` (or `pro_monthly` for ≤$25), set `purchased_at`. Skips downgrade of existing `pro_lifetime`.
+    - Mirror purchase tag back to CF (`sync_purchase`).
+- Outbound wiring:
+  - `routers/auth.py` → after Supabase signup, `BackgroundTasks.add_task(cf.sync_signup, email, full_name)`.
+  - `routers/billing.py` → after activation (`_activate_pro_from_session`), fetch profile email and `_fire_and_forget(cf.sync_purchase(...))`. Mirrors `iif_purchased_lifetime` or `iif_purchased_monthly`.
+  - `routers/billing.py` → in `_downgrade_to_free`, fire `cf.sync_refund(email)` so retention workflows can pick up `iif_refunded`.
+
+**Configuration (in `backend/.env`):**
+- `CLICKFUNNELS_API_TOKEN`, `CLICKFUNNELS_WORKSPACE_ID=7895`, `CLICKFUNNELS_WORKSPACE_SUBDOMAIN=influenceincubator.myclickfunnels.com`, `CLICKFUNNELS_USER_AGENT=InfluenceIncubator/1.0`
+- `CLICKFUNNELS_TAG_SIGNUP=incubator_formula_signup`, `CLICKFUNNELS_TAG_LIFETIME=iif_purchased_lifetime`, `CLICKFUNNELS_TAG_MONTHLY=iif_purchased_monthly`, `CLICKFUNNELS_TAG_REFUNDED=iif_refunded` (all overridable)
+- `CLICKFUNNELS_WEBHOOK_SECRET=` (empty = dev unsigned; populate after creating webhook in CF Dashboard).
+
+**Verified end-to-end against real CF workspace (7 flows):**
+1. Signup → CF contact created with `incubator_formula_signup` tag ✅
+2. Stripe purchase webhook → `iif_purchased_lifetime` tag applied to same contact ✅
+3. Self-serve refund → `iif_refunded` tag applied ✅
+4. CF webhook (existing email) → Pro activated on existing Supabase profile, no duplicate user ✅
+5. CF webhook (new email) → Supabase auth user auto-created with `email_confirm=True`, profile activated to `pro_lifetime` ✅
+6. Replay same CF event → `{duplicate: true}` ✅
+7. Duplicate signup → 409 from our app + still only 1 CF contact for that email ✅
+8. Signature verification: good signature passes, tampered signature → 400, expired signature → 400, missing header → 400 ✅
+
+**⚠️ Production handoff for user:**
+1. In ClickFunnels Dashboard → Developers → Webhooks → Add endpoint
+   - URL: `https://pro-unlock-3.preview.emergentagent.com/api/webhook/clickfunnels`
+   - Events to subscribe to: order paid / order created / payment success (whatever your funnel fires)
+   - Copy the signing secret into `CLICKFUNNELS_WEBHOOK_SECRET` in `backend/.env` and restart backend.
+2. (Optional) Edit the four tag names in `.env` if you prefer different naming.
+3. The integration is **additive** — both Stripe in-app purchases and ClickFunnels funnel purchases activate Pro; both push to the same CF contact (deduped by email).
+
+
 ### Phase 11 — Stripe Paywall ✅ COMPLETE
+
 **Status:** Both Lifetime $97 (one-time) and Monthly $19/mo (subscription) end-to-end working via Stripe Checkout. Self-serve refunds, subscription cancel, and webhooks all live.
 
 **Wiring / Files:**

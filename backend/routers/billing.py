@@ -12,6 +12,7 @@ Design:
 """
 import os
 import logging
+import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -20,8 +21,26 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from auth_supabase import require_user, admin, CurrentUser
+from services import clickfunnels as cf
 
 logger = logging.getLogger(__name__)
+
+
+def _fire_and_forget(coro, *, label: str) -> None:
+    """Schedule a coroutine on the running loop without awaiting it.
+
+    Used from sync code paths (e.g. Stripe webhook handlers) to push downstream
+    sync work without blocking the response. If no loop is running yet, run
+    synchronously in a temporary loop as a fallback.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(coro)
+    except RuntimeError:
+        try:
+            asyncio.run(coro)
+        except Exception as e:
+            logger.warning("Fire-and-forget %s fallback failed: %s", label, e)
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -239,15 +258,27 @@ def _activate_pro_from_session(session_obj) -> Optional[str]:
     try:
         admin.table("profiles").update(update).eq("id", user_id).execute()
         logger.info(f"Activated {pkg} for user {user_id}")
-        return user_id
     except Exception as e:
         # last_checkout_session_id column may not exist — retry without it
         if "last_checkout_session_id" in str(e):
             update.pop("last_checkout_session_id", None)
             admin.table("profiles").update(update).eq("id", user_id).execute()
-            return user_id
-        logger.error(f"Profile update failed for {user_id}: {e}")
-        raise
+        else:
+            logger.error(f"Profile update failed for {user_id}: {e}")
+            raise
+
+    # Mirror the purchase into ClickFunnels (best-effort, non-blocking).
+    try:
+        prof = admin.table("profiles").select("email,full_name").eq("id", user_id).limit(1).execute()
+        if prof.data:
+            email = prof.data[0].get("email")
+            name = prof.data[0].get("full_name")
+            if email:
+                _fire_and_forget(cf.sync_purchase(email, name, pkg), label=f"cf.sync_purchase<{email},{pkg}>")
+    except Exception as e:
+        logger.warning("ClickFunnels post-activation sync skipped: %s", e)
+
+    return user_id
 
 
 def _downgrade_to_free(user_id: str, reason: str = "manual"):
@@ -257,6 +288,16 @@ def _downgrade_to_free(user_id: str, reason: str = "manual"):
     }
     admin.table("profiles").update(update).eq("id", user_id).execute()
     logger.info(f"Downgraded user {user_id} to free ({reason})")
+    # Push refund tag back to ClickFunnels (best-effort).
+    try:
+        prof = admin.table("profiles").select("email,full_name").eq("id", user_id).limit(1).execute()
+        if prof.data and prof.data[0].get("email"):
+            _fire_and_forget(
+                cf.sync_refund(prof.data[0]["email"], prof.data[0].get("full_name")),
+                label=f"cf.sync_refund<{prof.data[0]['email']}>"
+            )
+    except Exception as e:
+        logger.warning("ClickFunnels post-downgrade sync skipped: %s", e)
 
 
 def _refund_window_remaining(profile: dict) -> Optional[timedelta]:

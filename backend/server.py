@@ -38,6 +38,7 @@ from routers.ai import router as ai_router  # noqa: E402
 from routers.uploads import router as uploads_router  # noqa: E402
 from routers.exports import router as exports_router  # noqa: E402
 from routers.billing import router as billing_router, webhook_router as stripe_webhook_router  # noqa: E402
+from routers.clickfunnels import router as clickfunnels_webhook_router  # noqa: E402
 
 api_router.include_router(auth_router)
 api_router.include_router(profile_router)
@@ -47,6 +48,7 @@ api_router.include_router(uploads_router)
 api_router.include_router(exports_router)
 api_router.include_router(billing_router)
 api_router.include_router(stripe_webhook_router)
+api_router.include_router(clickfunnels_webhook_router)
 
 app.include_router(api_router)
 
