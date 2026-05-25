@@ -5,10 +5,10 @@
   },
   {
     "content": "Comprehensive E2E testing of Quotas, Deletions, and Extra Plan Purchases (backend + frontend)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Update plan.md with Phase 11.6 completion + fix details",
-    "status": "pending"
+    "status": "completed"
   }
 ]

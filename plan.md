@@ -397,6 +397,55 @@ For each step 5–7:
 3. Optionally re-seed Lifetime/Monthly Price IDs in live mode and update `STRIPE_PRICE_LIFETIME` / `STRIPE_PRICE_MONTHLY`.
 
 
+### Phase 11.6 — Plan Quotas + Hard Deletes + Extra Plan Slots ✅ COMPLETE
+**Status:** Strict tier-based quotas, permanent plan deletion, and pay-per-slot extras all live and verified end-to-end (backend 19/20 tests passed, frontend code-reviewed + smoke-rendered).
+
+**Tier allowances:**
+- Free: 1 plan
+- Monthly: 1 plan + $10/mo per extra slot (recurring; canceling the extra sub decrements quota)
+- Lifetime: 6 plans + $19.99 one-time per extra slot (permanent)
+
+**Wiring / Files:**
+- `backend/services/quota.py` — `get_quota`, `assert_can_create_plan`, `add_plan_credits`, `remove_extra_subscription`, `count_active_plans`. Credits stored in `auth.users.user_metadata.plan_credits` and `extra_sub_ids` (no schema migration).
+- `backend/routers/plans.py`:
+  - `GET /api/plans/quota` — returns `{tier, base_allowance, credits, limit, used, remaining, extra_package, extra_price_cents}`.
+  - `POST /api/plans` — calls `quota_svc.assert_can_create_plan` → 402 `plan_quota_exceeded` when over.
+  - `DELETE /api/plans/{id}` — hard-deletes plan + cascading rows (`plan_inputs`, `plan_steps`, `ai_runs`); frees slot immediately. RLS-protected (returns 404 for other users' plans, which is the intentional non-info-leaking behavior).
+- `backend/routers/billing.py`:
+  - Added `extra_lifetime` ($19.99 one-time) and `extra_monthly` ($10/mo subscription) packages with tier-gated checkout (403 `lifetime_required` / `monthly_required`).
+  - Success URL uses `?extra_session_id={CHECKOUT_SESSION_ID}` for extras (separate from `?session_id` Pro flow).
+  - `_activate_pro_from_session` branches on `extra_*` packages → calls `quota_svc.add_plan_credits(+1, sub_id=...)`.
+  - `customer.subscription.deleted` webhook differentiates main sub (downgrade to free) vs extra sub (decrement credits via `remove_extra_subscription`).
+- `backend/routers/exports.py` — already enforces `step_range = range(1, 8) if is_pro else range(1, 3)` so free PDF only includes Steps 1 & 2; DOCX returns 402 `pro_required` for free.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Loads `/plans/quota` alongside plans; renders quota indicator (`X of Y plan slots used`).
+  - When `remaining === 0`: free users see "Want a second plan?" upgrade card → `/pricing`; pro users see "Buy extra slot" inline button + dashed CTA card → triggers `useStartCheckout('extra_lifetime' | 'extra_monthly')`.
+  - Plan cards have a hover/focus-revealed Trash button → AlertDialog confirm → `DELETE /plans/{id}` → toast + reload.
+  - Polling effect handles BOTH `?session_id=` (Pro purchase) and `?extra_session_id=` (extra-slot purchase), routes correct success toast ("Welcome to Pro!" vs "Plan slot added!"). `isExtra` is correctly scoped to the effect.
+  - `?canceled=1` and `?extras_canceled=1` toasts wired.
+
+**Stripe prices (test mode):**
+- `STRIPE_PRICE_EXTRA_LIFETIME=price_1Tb7VyGOHx8em2zzSuIyYPCP`
+- `STRIPE_PRICE_EXTRA_MONTHLY=price_1Tb7VyGOHx8em2zzXCkGkw87`
+
+**Bug fixed in this iteration:**
+- `Dashboard.jsx` polling effect referenced `isExtra` without defining it → would throw `ReferenceError` after any successful Pro checkout, blocking the "Welcome to Pro!" toast and profile refresh. Now correctly derived from `searchParams.get("extra_session_id")` and used to branch toast copy + activation expectations.
+
+**Verified end-to-end (testing agent, iteration_4):**
+- `/quota` returns correct shape per tier (free/monthly/lifetime). ✅
+- Quota enforcement: 402 `plan_quota_exceeded` once `used >= limit`. ✅
+- Hard delete frees slot immediately (`used` decrements). ✅
+- Extra-slot checkout: 403 on wrong tier; valid Stripe Session created for correct tier. ✅
+- Webhook `checkout.session.completed` for `extra_*` increments `plan_credits` and tracks `extra_sub_ids` for monthly. ✅
+- Webhook `customer.subscription.deleted` for extra sub decrements credits (without touching tier); for main sub downgrades to free (without touching credits). ✅
+- Free PDF export: 5371 bytes, Steps 1-2 only, watermarked, locked-step footer. ✅
+- Pro PDF export: 7516 bytes, all 7 steps. ✅
+- Free DOCX export: 402 `pro_required`. ✅
+- Pro DOCX export: valid 37 KB file. ✅
+- Frontend: Dashboard renders without console errors; `isExtra` reference resolved.
+
+---
+
 ## 3. Next Actions (Immediate)
 1) **Flip your test account to Pro** in Supabase so Steps 3–4 unlock end-to-end:
    - `UPDATE profiles SET subscription_status = 'pro_lifetime' WHERE email = 'YOUR_EMAIL';`
