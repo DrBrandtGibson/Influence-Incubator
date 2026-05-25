@@ -41,9 +41,10 @@ CLICKFUNNELS_WEBHOOK_SECRET = os.environ.get("CLICKFUNNELS_WEBHOOK_SECRET", "").
 CLICKFUNNELS_USER_AGENT = os.environ.get("CLICKFUNNELS_USER_AGENT", "InfluenceIncubator/1.0").strip()
 
 TAG_SIGNUP = os.environ.get("CLICKFUNNELS_TAG_SIGNUP", "incubator_formula_signup").strip()
-TAG_PURCHASE_LIFETIME = os.environ.get("CLICKFUNNELS_TAG_LIFETIME", "iif_purchased_lifetime").strip()
-TAG_PURCHASE_MONTHLY = os.environ.get("CLICKFUNNELS_TAG_MONTHLY", "iif_purchased_monthly").strip()
-TAG_REFUNDED = os.environ.get("CLICKFUNNELS_TAG_REFUNDED", "iif_refunded").strip()
+TAG_PURCHASE_LIFETIME = os.environ.get("CLICKFUNNELS_TAG_LIFETIME", "incubator_formula_lifetime").strip()
+TAG_PURCHASE_MONTHLY = os.environ.get("CLICKFUNNELS_TAG_MONTHLY", "incubator_formula_monthly").strip()
+TAG_REFUNDED = os.environ.get("CLICKFUNNELS_TAG_REFUNDED", "Incubator_formula_refunded").strip()
+TAG_DOWNGRADE = os.environ.get("CLICKFUNNELS_TAG_DOWNGRADE", "Incubator_formula_downgrade").strip()
 
 WEBHOOK_TOLERANCE_SECONDS = 600
 
@@ -209,7 +210,12 @@ async def sync_purchase(email: str, full_name: Optional[str], package: str) -> N
 
 
 async def sync_refund(email: str, full_name: Optional[str] = None) -> None:
-    await _safe_run(_sync_email_with_tags(email, full_name, [TAG_REFUNDED]), label=f"sync_refund<{email}>")
+    await _safe_run(_sync_email_with_tags(email, full_name, [TAG_REFUNDED, TAG_DOWNGRADE]), label=f"sync_refund<{email}>")
+
+
+async def sync_downgrade(email: str, full_name: Optional[str] = None) -> None:
+    """Apply the downgrade tag (e.g. subscription canceled, or any non-refund downgrade)."""
+    await _safe_run(_sync_email_with_tags(email, full_name, [TAG_DOWNGRADE]), label=f"sync_downgrade<{email}>")
 
 
 # ---------- Webhook signature verification ----------
@@ -279,37 +285,73 @@ def _deep_get(d: Any, *keys: str, default: Any = None) -> Any:
     return cur
 
 
+def _classify_event(event_type: str) -> str:
+    """Map a ClickFunnels event_type string to an internal kind.
+
+    Returns one of:
+      'purchase_lifetime'  — one-time purchase (Lifetime SKU)
+      'purchase_monthly'   — recurring subscription activated/renewed
+      'subscription_canceled' — subscription canceled (downgrade to free)
+      'refunded'           — order/invoice refunded (downgrade + refund tag)
+      'unknown'            — not handled
+    """
+    if not event_type:
+        return "unknown"
+    et = event_type.lower().strip()
+
+    # Refunds first (most specific)
+    if any(k in et for k in ("refund", "refunded", "invoice.refunded", "orders/invoice.refunded", "charge.refunded")):
+        return "refunded"
+
+    # Subscription lifecycle
+    if "subscription" in et:
+        if any(k in et for k in ("cancel", "canceled", "cancelled", "deleted", "ended")):
+            return "subscription_canceled"
+        if any(k in et for k in ("activate", "activated", "created", "started", "renewed", "updated")):
+            return "purchase_monthly"
+
+    # Generic order/payment success → lifetime (one-time)
+    if any(k in et for k in (
+        "order.completed", "order.created", "order.paid", "order_paid",
+        "payment.succeeded", "payment.success", "payment_succeeded",
+        "invoice.paid", "purchase", "checkout.completed",
+    )):
+        return "purchase_lifetime"
+
+    return "unknown"
+
+
 def parse_event(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize a ClickFunnels webhook payload into a simple dict.
+    """Normalize a ClickFunnels webhook payload.
 
     Returns:
         {
           "event_id": str,
-          "event_type": str,
+          "event_type": str,        # raw event type from CF
+          "event_kind": str,        # one of the _classify_event values
           "email": str | None,
           "full_name": str | None,
           "contact_id": int | None,
           "amount_cents": int | None,
           "currency": str | None,
-          "is_purchase": bool,
+          "raw": dict,
         }
 
-    ClickFunnels webhook payloads use a variety of shapes depending on event type.
-    We probe several common locations so that the same handler works for order/
-    payment events without being brittle to schema changes.
+    Probes multiple common locations (data.contact.email_address, data.customer.email,
+    attributes.customer_email, etc.) for robustness across CF event payload variants.
     """
     event_id = payload.get("id") or payload.get("event_id") or payload.get("uuid") or ""
     event_type = payload.get("event") or payload.get("type") or payload.get("event_type") or ""
-
     data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
 
-    # Common locations for email
     email = (
         _deep_get(data, "contact", "email_address")
         or _deep_get(data, "contact", "email")
         or _deep_get(data, "customer", "email")
         or _deep_get(data, "attributes", "customer_email")
         or _deep_get(data, "attributes", "email")
+        or _deep_get(data, "order", "customer", "email")
+        or _deep_get(data, "invoice", "customer", "email")
         or data.get("email_address")
         or data.get("email")
     )
@@ -324,11 +366,9 @@ def parse_event(payload: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         contact_id = None
 
-    # Order/payment amount
     amount = (
-        data.get("total_amount")
-        or data.get("amount")
-        or _deep_get(data, "order", "total_amount")
+        data.get("total_amount") or data.get("amount")
+        or _deep_get(data, "order", "total_amount") or _deep_get(data, "invoice", "total_amount")
         or _deep_get(data, "attributes", "total_amount")
     )
     amount_cents: Optional[int] = None
@@ -339,17 +379,17 @@ def parse_event(payload: Dict[str, Any]) -> Dict[str, Any]:
             amount_cents = None
 
     currency = data.get("currency") or _deep_get(data, "order", "currency") or "usd"
-    is_purchase = bool(event_type) and any(k in event_type.lower() for k in ("paid", "purchase", "order.created", "payment.success", "order_paid"))
+    event_kind = _classify_event(event_type)
 
     return {
         "event_id": str(event_id),
         "event_type": str(event_type),
+        "event_kind": event_kind,
         "email": email,
         "full_name": full_name,
         "contact_id": contact_id,
         "amount_cents": amount_cents,
         "currency": currency,
-        "is_purchase": is_purchase,
         "raw": payload,
     }
 

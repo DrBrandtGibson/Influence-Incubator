@@ -130,19 +130,21 @@ def _activate_pro(user_id: str, package: str) -> None:
         logger.error("Profile activation failed for %s: %s", user_id, e)
 
 
-async def _process_purchase(event: Dict[str, Any]) -> None:
-    """Background-safe handler: provision user + activate Pro + tag in CF."""
+async def _process_purchase(event: Dict[str, Any], package: str) -> None:
+    """Provision Supabase user (if missing) and activate Pro. Idempotent.
+
+    `package` is 'lifetime' (one-time) or 'monthly' (subscription).
+    """
     email = event.get("email")
     if not email:
-        logger.warning("CF webhook: no email in event %s; skipping", event.get("event_id"))
+        logger.warning("CF webhook %s: no email; skipping", event.get("event_id"))
         return
-    package = cf.package_from_amount(event.get("amount_cents"))
     full_name = event.get("full_name")
 
     user = _find_supabase_user(email)
     if user:
         uid = _user_id(user)
-        logger.info("CF webhook: existing user %s (%s) — activating Pro", uid, email)
+        logger.info("CF webhook: existing user %s (%s) — activating %s Pro", uid, email, package)
     else:
         uid = _create_supabase_user(email, full_name)
         if not uid:
@@ -151,10 +153,43 @@ async def _process_purchase(event: Dict[str, Any]) -> None:
         logger.info("CF webhook: created new user %s for %s", uid, email)
 
     _activate_pro(uid, package)
-
-    # Mirror the purchase tag back to CF for unified workflow targeting.
     try:
         await cf.sync_purchase(email, full_name, package)
+    except Exception as e:
+        logger.warning("CF tag-back failed for %s: %s", email, e)
+
+
+async def _process_downgrade(event: Dict[str, Any], reason: str) -> None:
+    """Subscription canceled or refunded — downgrade existing user (no-op if not found).
+
+    `reason` is 'refunded' or 'subscription_canceled'. We never create a user here.
+    """
+    email = event.get("email")
+    if not email:
+        logger.warning("CF webhook %s: no email; skipping downgrade", event.get("event_id"))
+        return
+    user = _find_supabase_user(email)
+    if not user:
+        logger.info("CF webhook downgrade: no matching user for %s — skipping", email)
+        return
+    uid = _user_id(user)
+    full_name = event.get("full_name")
+    try:
+        admin.table("profiles").update({
+            "subscription_status": "free",
+            "pro_until": None,
+        }).eq("id", uid).execute()
+        logger.info("CF webhook: downgraded %s (%s) to free [%s]", uid, email, reason)
+    except Exception as e:
+        logger.error("CF downgrade failed for %s: %s", email, e)
+        return
+
+    # Tag back to CF: refund tag also implicitly applies downgrade tag (sync_refund handles both).
+    try:
+        if reason == "refunded":
+            await cf.sync_refund(email, full_name)
+        else:
+            await cf.sync_downgrade(email, full_name)
     except Exception as e:
         logger.warning("CF tag-back failed for %s: %s", email, e)
 
@@ -182,17 +217,30 @@ async def clickfunnels_webhook(request: Request, background_tasks: BackgroundTas
     event = cf.parse_event(payload)
     event_id = event["event_id"]
     event_type = event["event_type"]
+    event_kind = event["event_kind"]
 
     # 3. Idempotency
     if not _mark_processed(event_id):
         logger.info("CF webhook: duplicate event %s — ignoring", event_id)
         return {"received": True, "duplicate": True}
 
-    # 4. Dispatch
-    if event["is_purchase"] or event.get("email"):
-        # Purchase or contact-creation style event — provision user/Pro.
-        background_tasks.add_task(_process_purchase, event)
-        return {"received": True, "queued": True, "event_id": event_id, "event_type": event_type}
+    # 4. Dispatch by event_kind
+    if event_kind == "purchase_lifetime":
+        background_tasks.add_task(_process_purchase, event, "lifetime")
+    elif event_kind == "purchase_monthly":
+        background_tasks.add_task(_process_purchase, event, "monthly")
+    elif event_kind == "refunded":
+        background_tasks.add_task(_process_downgrade, event, "refunded")
+    elif event_kind == "subscription_canceled":
+        background_tasks.add_task(_process_downgrade, event, "subscription_canceled")
+    else:
+        logger.info("CF webhook: ignored event_type=%s (unrecognized)", event_type)
+        return {"received": True, "ignored": True, "event_type": event_type}
 
-    logger.info("CF webhook: ignored event_type=%s (no email or non-purchase)", event_type)
-    return {"received": True, "ignored": True, "event_type": event_type}
+    return {
+        "received": True,
+        "queued": True,
+        "event_id": event_id,
+        "event_type": event_type,
+        "event_kind": event_kind,
+    }
