@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -383,13 +383,24 @@ function offerName(id, getInput, idx) {
     return n && n.trim() ? n : `Offer ${idx + 1}`;
 }
 
-function readStack(getInput, id) {
+function _newRowId() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    return `r_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Parse raw stack JSON into row objects, ensuring each row has a stable _id. */
+function parseStackJson(rawJson) {
+    let arr = null;
     try {
-        const raw = getInput(STEP_NUM, `${id}_stack`);
-        const arr = raw ? JSON.parse(raw) : null;
-        if (Array.isArray(arr) && arr.length > 0) return arr;
+        const parsed = rawJson ? JSON.parse(rawJson) : null;
+        if (Array.isArray(parsed) && parsed.length > 0) arr = parsed;
     } catch { /* fall through */ }
-    return [{ item: "", benefit: "", value: "" }];
+    if (!arr) arr = [{ item: "", benefit: "", value: "" }];
+    return arr.map((r) => (r && r._id ? r : { ...r, _id: _newRowId() }));
+}
+
+function readStack(getInput, id) {
+    return parseStackJson(getInput(STEP_NUM, `${id}_stack`));
 }
 
 // =================== HOOK-STORY-OFFER (multi-offer) ===================
@@ -439,19 +450,25 @@ function HookStoryOffer({ planId, getInput, setInput }) {
 
 function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove }) {
     const [pane, setPane] = useState("details"); // details | message
-    const stack = readStack(getInput, id);
+    const stackJson = getInput(STEP_NUM, `${id}_stack`) || "";
+    // Memoize on the raw JSON so _id values stay stable across re-renders.
+    const stack = useMemo(() => parseStackJson(stackJson), [stackJson]);
 
     function updateStack(next) {
         const json = JSON.stringify(next);
         setInput(STEP_NUM, `${id}_stack`, json);
         persist(planId, `${id}_stack`, json);
     }
-    function updateStackRow(i, field, value) {
-        const next = stack.map((r, j) => j === i ? { ...r, [field]: value } : r);
+    function updateStackRow(rowId, field, value) {
+        const next = stack.map((r) => r._id === rowId ? { ...r, [field]: value } : r);
         updateStack(next);
     }
-    function addStackRow() { updateStack([...stack, { item: "", benefit: "", value: "" }]); }
-    function removeStackRow(i) { updateStack(stack.filter((_, j) => j !== i)); }
+    function addStackRow() {
+        updateStack([...stack, { item: "", benefit: "", value: "", _id: _newRowId() }]);
+    }
+    function removeStackRow(rowId) {
+        updateStack(stack.filter((r) => r._id !== rowId));
+    }
 
     const [busy, setBusy] = useState(false);
     async function generateHookStory() {
@@ -535,11 +552,11 @@ function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove 
                             <div className="col-span-1"></div>
                         </div>
                         {stack.map((r, i) => (
-                            <div key={i} className="grid grid-cols-12 gap-2">
-                                <Input className="col-span-4 h-10 rounded-lg" value={r.item} onChange={(e) => updateStackRow(i, "item", e.target.value)} placeholder="e.g. 8-week coaching" data-testid={`offer-${id}-stack-item-${i}`} />
-                                <Input className="col-span-5 h-10 rounded-lg" value={r.benefit} onChange={(e) => updateStackRow(i, "benefit", e.target.value)} placeholder="e.g. Done-with-you brand voice" data-testid={`offer-${id}-stack-benefit-${i}`} />
-                                <Input className="col-span-2 h-10 rounded-lg" value={r.value} onChange={(e) => updateStackRow(i, "value", e.target.value)} placeholder="$2,000" data-testid={`offer-${id}-stack-value-${i}`} />
-                                <button onClick={() => removeStackRow(i)} disabled={stack.length <= 1} className="col-span-1 grid place-items-center text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label="Remove row" data-testid={`offer-${id}-stack-remove-${i}`}>
+                            <div key={r._id} className="grid grid-cols-12 gap-2">
+                                <Input className="col-span-4 h-10 rounded-lg" value={r.item} onChange={(e) => updateStackRow(r._id, "item", e.target.value)} placeholder="e.g. 8-week coaching" data-testid={`offer-${id}-stack-item-${i}`} />
+                                <Input className="col-span-5 h-10 rounded-lg" value={r.benefit} onChange={(e) => updateStackRow(r._id, "benefit", e.target.value)} placeholder="e.g. Done-with-you brand voice" data-testid={`offer-${id}-stack-benefit-${i}`} />
+                                <Input className="col-span-2 h-10 rounded-lg" value={r.value} onChange={(e) => updateStackRow(r._id, "value", e.target.value)} placeholder="$2,000" data-testid={`offer-${id}-stack-value-${i}`} />
+                                <button onClick={() => removeStackRow(r._id)} disabled={stack.length <= 1} className="col-span-1 grid place-items-center text-muted-foreground hover:text-destructive disabled:opacity-30" aria-label="Remove row" data-testid={`offer-${id}-stack-remove-${i}`}>
                                     <Trash2 className="h-4 w-4" />
                                 </button>
                             </div>
@@ -756,8 +773,8 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                                         <div className="mt-3">
                                             <div className="label-eyebrow text-brand-bronze mb-1.5">Stack</div>
                                             <ul className="text-sm space-y-1">
-                                                {stack.map((r, i) => (
-                                                    <li key={i} className="flex gap-2"><span className="text-brand-bronze">·</span><span className="flex-1"><span className="font-medium">{r.item}</span>{r.benefit && <> — <span className="text-muted-foreground">{r.benefit}</span></>}{r.value && <> · <span className="text-brand-bronze">{r.value}</span></>}</span></li>
+                                                {stack.map((r) => (
+                                                    <li key={r._id || `${r.item}-${r.benefit}-${r.value}`} className="flex gap-2"><span className="text-brand-bronze">·</span><span className="flex-1"><span className="font-medium">{r.item}</span>{r.benefit && <> — <span className="text-muted-foreground">{r.benefit}</span></>}{r.value && <> · <span className="text-brand-bronze">{r.value}</span></>}</span></li>
                                                 ))}
                                             </ul>
                                         </div>

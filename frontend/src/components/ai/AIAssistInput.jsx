@@ -71,6 +71,84 @@ export const AIAssistInput = ({
         }
     }
 
+    // ----- Helpers extracted from runAI to reduce complexity -----
+    function buildAIRequest(mode, instructions) {
+        const path = mode === "answer" ? "answer-question" : mode === "expand" ? "expand-answer" : "refine";
+        return {
+            url: `/ai/${path}`,
+            body: JSON.stringify({
+                plan_id: planId,
+                step_num: stepNum,
+                field_key: fieldKey,
+                field_label: fieldLabel,
+                user_text: value || "",
+                instructions,
+                sub_module: subModule,
+                extra_context: extraContext,
+            }),
+        };
+    }
+
+    async function parseErrorResponse(res) {
+        let detail = `HTTP ${res.status}`;
+        try {
+            const j = await res.json();
+            detail = j?.detail?.message || j?.detail || detail;
+        } catch (parseErr) {
+            console.warn("AIAssistInput: could not parse error JSON", parseErr);
+        }
+        return detail;
+    }
+
+    function parseSSEEvent(rawEvent) {
+        const lines = rawEvent.split("\n");
+        let event = "message";
+        let dataStr = "";
+        for (const ln of lines) {
+            if (ln.startsWith("event:")) event = ln.slice(6).trim();
+            else if (ln.startsWith("data:")) dataStr += ln.slice(5).trim();
+        }
+        let payload = {};
+        if (dataStr) {
+            try {
+                payload = JSON.parse(dataStr);
+            } catch (parseErr) {
+                // SSE chunks may briefly contain partial JSON; ignore safely
+                console.debug("AIAssistInput: dropped malformed SSE chunk", parseErr);
+            }
+        }
+        return { event, payload, hasData: !!dataStr };
+    }
+
+    async function consumeStream(res) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let acc = "";
+        while (true) {
+            const { value: chunk, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(chunk, { stream: true });
+            let idx;
+            while ((idx = buffer.indexOf("\n\n")) !== -1) {
+                const evt = buffer.slice(0, idx);
+                buffer = buffer.slice(idx + 2);
+                const { event, payload, hasData } = parseSSEEvent(evt);
+                if (!hasData) continue;
+                if (event === "chunk" && payload.text) {
+                    acc += payload.text;
+                    setStreamed(acc);
+                } else if (event === "done") {
+                    acc = payload.text || acc;
+                    setStreamed(acc);
+                } else if (event === "error") {
+                    throw new Error(payload.error || "Generation failed");
+                }
+            }
+        }
+        return acc;
+    }
+
     async function runAI(mode, instructions = "") {
         if (locked) {
             toast.error("This step is locked. Upgrade to use AI here.");
@@ -82,65 +160,17 @@ export const AIAssistInput = ({
         const controller = new AbortController();
         abortRef.current = controller;
         try {
-            const url = `/ai/${mode === "answer" ? "answer-question" : mode === "expand" ? "expand-answer" : "refine"}`;
-            const res = await authedFetch(url, {
-                method: "POST",
-                signal: controller.signal,
-                body: JSON.stringify({
-                    plan_id: planId,
-                    step_num: stepNum,
-                    field_key: fieldKey,
-                    field_label: fieldLabel,
-                    user_text: value || "",
-                    instructions,
-                    sub_module: subModule,
-                    extra_context: extraContext
-                })
-            });
+            const { url, body } = buildAIRequest(mode, instructions);
+            const res = await authedFetch(url, { method: "POST", signal: controller.signal, body });
             if (!res.ok) {
-                let detail = `HTTP ${res.status}`;
-                try { const j = await res.json(); detail = j?.detail?.message || j?.detail || detail; } catch {}
-                throw new Error(detail);
+                throw new Error(await parseErrorResponse(res));
             }
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let acc = "";
-            while (true) {
-                const { value: chunk, done } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(chunk, { stream: true });
-                // SSE split by "\n\n"
-                let idx;
-                while ((idx = buffer.indexOf("\n\n")) !== -1) {
-                    const evt = buffer.slice(0, idx);
-                    buffer = buffer.slice(idx + 2);
-                    const lines = evt.split("\n");
-                    let event = "message";
-                    let dataStr = "";
-                    for (const ln of lines) {
-                        if (ln.startsWith("event:")) event = ln.slice(6).trim();
-                        else if (ln.startsWith("data:")) dataStr += ln.slice(5).trim();
-                    }
-                    if (!dataStr) continue;
-                    let payload = {};
-                    try { payload = JSON.parse(dataStr); } catch {}
-                    if (event === "chunk" && payload.text) {
-                        acc += payload.text;
-                        setStreamed(acc);
-                    } else if (event === "done") {
-                        acc = payload.text || acc;
-                        setStreamed(acc);
-                    } else if (event === "error") {
-                        throw new Error(payload.error || "Generation failed");
-                    }
-                }
-            }
-            // Apply: replace field with the generated text
-            onChange(acc);
-            persist(acc);
+            const finalText = await consumeStream(res);
+            onChange(finalText);
+            persist(finalText);
         } catch (e) {
             if (e.name === "AbortError") return;
+            console.error("AIAssistInput.runAI failed:", e);
             toast.error(e.message || "AI generation failed", { description: "Please try again." });
         } finally {
             setBusy(false);

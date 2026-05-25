@@ -1,30 +1,22 @@
 [
   {
-    "content": "CRITICAL: Initialize session=None in billing.py to silence possibly-unbound warnings",
+    "content": "Refactor _build_pdf (extract cover + step section helpers)",
     "status": "completed"
   },
   {
-    "content": "Refactor stripe_webhook: extract per-event handlers (reduce complexity 24→8)",
+    "content": "Refactor _build_docx + _docx_step_extras (extract step renderers + styled-run helper)",
     "status": "completed"
   },
   {
-    "content": "CRITICAL: Fix AuthContext useEffect deps + log signup errors",
+    "content": "Refactor AIAssistInput.runAI (extract buildAIRequest + parseSSEEvent + consumeStream)",
     "status": "completed"
   },
   {
-    "content": "CRITICAL: Fix Dashboard useEffect deps (wrap loadPlans in useCallback)",
+    "content": "Fix critical index-as-key in StepFrame stack rows with stable _id (UUID)",
     "status": "completed"
   },
   {
-    "content": "CRITICAL: Fix PlanWorkspace catch blocks log errors",
-    "status": "completed"
-  },
-  {
-    "content": "CRITICAL: Fix StepDefine.jsx useEffect — add catch logging + clear comment",
-    "status": "completed"
-  },
-  {
-    "content": "Verify all fixes by running services + lint check",
+    "content": "Verify all changes: lint + service smoke + UI render",
     "status": "completed"
   }
 ]

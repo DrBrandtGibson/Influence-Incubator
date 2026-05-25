@@ -1,6 +1,6 @@
 """PDF + DOCX export endpoints for plans."""
 from io import BytesIO
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -149,6 +149,40 @@ def _para(text, style):
     return Paragraph(safe, style)
 
 
+def _pdf_cover(plan: dict, is_pro: bool, styles, story: list) -> None:
+    story.append(_para("THE INFLUENCE INCUBATOR FORMULA", styles["eyebrow"]))
+    story.append(_para(plan.get("title") or "Untitled Plan", styles["title"]))
+    story.append(_para("A 7-Step Business Plan", styles["subtitle"]))
+    if not is_pro:
+        story.append(_para("Free preview — upgrade to Pro for the full export without watermark and to enable Word format.", styles["italic"]))
+    story.append(Spacer(1, 14))
+
+
+def _pdf_step_header(step_num: int, styles, story: list) -> None:
+    verb, tail = STEP_TITLES[step_num]
+    story.append(PageBreak())
+    story.append(_para(f"STEP 0{step_num}", styles["eyebrow"]))
+    story.append(_para(f"{verb} <font color='#8B6F2A'>{tail}</font>", styles["stepHeading"]))
+
+
+def _pdf_labeled_fields(step_num: int, step_data: dict, styles, story: list) -> None:
+    for fk, label in LABELS.get(step_num, []):
+        v = step_data.get(fk)
+        if v:
+            story.append(_para(label.upper(), styles["label"]))
+            story.append(_para(v, styles["body"]))
+
+
+# Dispatch table for step-specific structured renderings.
+_PDF_STEP_RENDERERS = {
+    3: lambda d, s, st: _render_step3(d, s, st),
+    4: lambda d, s, st: _render_step4(d, s, st),
+    5: lambda d, s, st: _render_step5(d, s, st),
+    6: lambda d, s, st: _render_step6(d, s, st),
+    7: lambda d, s, st: _render_step7(d, s, st),
+}
+
+
 def _build_pdf(plan: dict, inputs: List[dict], is_pro: bool) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(
@@ -160,45 +194,20 @@ def _build_pdf(plan: dict, inputs: List[dict], is_pro: bool) -> bytes:
     )
     styles = _build_styles()
     data = _by_key(inputs)
-    story = []
+    story: list = []
 
-    # Cover
-    story.append(_para("THE INFLUENCE INCUBATOR FORMULA", styles["eyebrow"]))
-    story.append(_para(plan.get("title") or "Untitled Plan", styles["title"]))
-    story.append(_para("A 7-Step Business Plan", styles["subtitle"]))
-    if not is_pro:
-        story.append(_para("Free preview — upgrade to Pro for the full export without watermark and to enable Word format.", styles["italic"]))
-    story.append(Spacer(1, 14))
+    _pdf_cover(plan, is_pro, styles, story)
 
     for step_num in range(1, 8):
-        verb, tail = STEP_TITLES[step_num]
-        story.append(PageBreak())
-        story.append(_para(f"STEP 0{step_num}", styles["eyebrow"]))
-        story.append(_para(f"{verb} <font color='#8B6F2A'>{tail}</font>", styles["stepHeading"]))
+        _pdf_step_header(step_num, styles, story)
         step_data = data.get(step_num, {})
-
         if not step_data:
             story.append(_para("No entries yet for this step.", styles["italic"]))
             continue
-
-        # Known labeled fields
-        for fk, label in LABELS.get(step_num, []):
-            v = step_data.get(fk)
-            if v:
-                story.append(_para(label.upper(), styles["label"]))
-                story.append(_para(v, styles["body"]))
-
-        # Step-specific structured renderings
-        if step_num == 3:
-            _render_step3(step_data, story, styles)
-        elif step_num == 4:
-            _render_step4(step_data, story, styles)
-        elif step_num == 5:
-            _render_step5(step_data, story, styles)
-        elif step_num == 6:
-            _render_step6(step_data, story, styles)
-        elif step_num == 7:
-            _render_step7(step_data, story, styles)
+        _pdf_labeled_fields(step_num, step_data, styles, story)
+        renderer = _PDF_STEP_RENDERERS.get(step_num)
+        if renderer:
+            renderer(step_data, story, styles)
 
     on_page = _on_page_free if not is_pro else _on_page_pro
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
@@ -223,10 +232,14 @@ def _render_step3(d: Dict[str, str], story, styles):
         promise = d.get(f"{oid}_promise")
         elevator = d.get(f"{oid}_elevator")
         story.append(_para(f"<b>{name}</b>" + (f" — <font color='#8B6F2A'>{price}</font>" if price else ""), styles["sectionHeading"]))
-        if hook: story.append(_para(f"<i>Hook:</i> {hook}", styles["body"]))
-        if stry: story.append(_para(f"<i>Story:</i> {stry}", styles["body"]))
-        if promise: story.append(_para(f"<i>Promise:</i> {promise}", styles["body"]))
-        if elevator: story.append(_para(f"<i>Elevator Pitch:</i> {elevator}", styles["body"]))
+        if hook:
+            story.append(_para(f"<i>Hook:</i> {hook}", styles["body"]))
+        if stry:
+            story.append(_para(f"<i>Story:</i> {stry}", styles["body"]))
+        if promise:
+            story.append(_para(f"<i>Promise:</i> {promise}", styles["body"]))
+        if elevator:
+            story.append(_para(f"<i>Elevator Pitch:</i> {elevator}", styles["body"]))
 
 
 def _render_step4(d: Dict[str, str], story, styles):
@@ -261,8 +274,10 @@ def _render_step5(d: Dict[str, str], story, styles):
         story.append(_para(f"<b>{fw.get('name', '—')}</b> — <i>{fw.get('tagline', '')}</i>", styles["body"]))
         for i, ph in enumerate(fw.get("phases") or []):
             line = f"{i + 1}. <b>{ph.get('verb', '')} {ph.get('name', '')}</b>"
-            if ph.get("transformation"): line += f" — <i>{ph['transformation']}</i>"
-            if ph.get("description"): line += f"<br/>&nbsp;&nbsp;&nbsp;{ph['description']}"
+            if ph.get("transformation"):
+                line += f" — <i>{ph['transformation']}</i>"
+            if ph.get("description"):
+                line += f"<br/>&nbsp;&nbsp;&nbsp;{ph['description']}"
             story.append(_para(line, styles["body"]))
     saas = _safe_json(d.get("saas_options_json"))
     if saas and saas.get("options"):
@@ -311,69 +326,66 @@ def _render_step7(d: Dict[str, str], story, styles):
 
 # =============================== DOCX ===============================
 
-def _build_docx(plan: dict, inputs: List[dict]) -> bytes:
-    doc = Document()
-    # Margins
+_BRONZE = RGBColor(0x8B, 0x6F, 0x2A)
+
+
+def _docx_styled_run(paragraph, text: str, *, bold: bool = False, italic: bool = False, size_pt: Optional[int] = None, color=None):
+    """Append a styled run to a docx paragraph and return it."""
+    r = paragraph.add_run(text)
+    r.bold = bool(bold)
+    r.italic = bool(italic)
+    if size_pt:
+        r.font.size = Pt(size_pt)
+    if color is not None:
+        r.font.color.rgb = color
+    return r
+
+
+def _docx_set_margins(doc: Document) -> None:
     for section in doc.sections:
         section.left_margin = Inches(0.8)
         section.right_margin = Inches(0.8)
         section.top_margin = Inches(0.7)
         section.bottom_margin = Inches(0.8)
 
+
+def _docx_cover(doc: Document, plan: dict) -> None:
+    _docx_styled_run(doc.add_paragraph(), "THE INFLUENCE INCUBATOR FORMULA", bold=True, size_pt=9, color=_BRONZE)
+    _docx_styled_run(doc.add_paragraph(), plan.get("title") or "Untitled Plan", bold=True, size_pt=28)
+    _docx_styled_run(doc.add_paragraph(), "A 7-Step Business Plan", italic=True, size_pt=13, color=_BRONZE)
+
+
+def _docx_step_header(doc: Document, step_num: int) -> None:
+    verb, tail = STEP_TITLES[step_num]
+    _docx_styled_run(doc.add_paragraph(), f"STEP 0{step_num}", bold=True, size_pt=8, color=_BRONZE)
+    heading = doc.add_paragraph()
+    _docx_styled_run(heading, f"{verb} ", bold=True, size_pt=22)
+    _docx_styled_run(heading, tail, bold=True, size_pt=22, color=_BRONZE)
+
+
+def _docx_labeled_fields(doc: Document, step_num: int, step_data: dict) -> None:
+    for fk, label in LABELS.get(step_num, []):
+        v = step_data.get(fk)
+        if not v:
+            continue
+        _docx_styled_run(doc.add_paragraph(), label.upper(), bold=True, size_pt=9, color=_BRONZE)
+        doc.add_paragraph(v)
+
+
+def _build_docx(plan: dict, inputs: List[dict]) -> bytes:
+    doc = Document()
+    _docx_set_margins(doc)
     data = _by_key(inputs)
 
-    # Cover
-    p = doc.add_paragraph()
-    r = p.add_run("THE INFLUENCE INCUBATOR FORMULA")
-    r.bold = True
-    r.font.size = Pt(9)
-    r.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-
-    title = doc.add_paragraph()
-    rt = title.add_run(plan.get("title") or "Untitled Plan")
-    rt.bold = True
-    rt.font.size = Pt(28)
-
-    sub = doc.add_paragraph()
-    rs = sub.add_run("A 7-Step Business Plan")
-    rs.italic = True
-    rs.font.size = Pt(13)
-    rs.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-
+    _docx_cover(doc, plan)
     for step_num in range(1, 8):
         doc.add_page_break()
-        verb, tail = STEP_TITLES[step_num]
-        eyebrow = doc.add_paragraph()
-        eb = eyebrow.add_run(f"STEP 0{step_num}")
-        eb.bold = True
-        eb.font.size = Pt(8)
-        eb.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-
-        heading = doc.add_paragraph()
-        rh = heading.add_run(f"{verb} ")
-        rh.bold = True
-        rh.font.size = Pt(22)
-        rt = heading.add_run(tail)
-        rt.bold = True
-        rt.font.size = Pt(22)
-        rt.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-
+        _docx_step_header(doc, step_num)
         step_data = data.get(step_num, {})
         if not step_data:
             doc.add_paragraph("No entries yet for this step.").italic = True
             continue
-
-        for fk, label in LABELS.get(step_num, []):
-            v = step_data.get(fk)
-            if v:
-                lp = doc.add_paragraph()
-                lr = lp.add_run(label.upper())
-                lr.bold = True
-                lr.font.size = Pt(9)
-                lr.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-                doc.add_paragraph(v)
-
-        # Reuse PDF renderers' logic where possible by emitting plain text into docx
+        _docx_labeled_fields(doc, step_num, step_data)
         _docx_step_extras(doc, step_num, step_data)
 
     out = BytesIO()
@@ -381,39 +393,55 @@ def _build_docx(plan: dict, inputs: List[dict]) -> bytes:
     return out.getvalue()
 
 
-def _docx_step_extras(doc: Document, step_num: int, d: Dict[str, str]):
-    if step_num == 3:
-        try:
-            offer_ids = json.loads(d.get("offer_ids") or "[]")
-        except Exception:
-            offer_ids = []
-        for i, oid in enumerate(offer_ids):
-            name = d.get(f"{oid}_name") or f"Offer {i + 1}"
-            price = d.get(f"{oid}_price") or ""
-            p = doc.add_paragraph()
-            r = p.add_run(name)
-            r.bold = True
-            r.font.size = Pt(13)
-            if price:
-                r2 = p.add_run(f"  —  {price}")
-                r2.font.color.rgb = RGBColor(0x8B, 0x6F, 0x2A)
-            for key, label in [("hook", "Hook"), ("story", "Story"), ("promise", "Promise"), ("elevator", "Elevator Pitch")]:
-                v = d.get(f"{oid}_{key}")
-                if v:
-                    pp = doc.add_paragraph()
-                    rr = pp.add_run(f"{label}: ")
-                    rr.bold = True
-                    pp.add_run(v)
-    elif step_num == 5:
-        fw = _safe_json(d.get("framework_json"))
-        if fw and fw.get("phases"):
-            for i, ph in enumerate(fw["phases"]):
-                doc.add_paragraph(f"{i + 1}. {ph.get('verb', '')} {ph.get('name', '')} — {ph.get('transformation', '')}")
-    elif step_num == 6:
-        outline = _safe_json(d.get("book_outline_json"))
-        if outline and outline.get("chapters"):
-            for ch in outline["chapters"]:
-                doc.add_paragraph(f"{ch.get('n', '')}. {ch.get('title', '')}")
+def _docx_render_step3(doc: Document, d: Dict[str, str]) -> None:
+    """Step 3 — list of offers with their HSO bundle."""
+    try:
+        offer_ids = json.loads(d.get("offer_ids") or "[]")
+    except Exception:
+        offer_ids = []
+    for i, oid in enumerate(offer_ids):
+        name = d.get(f"{oid}_name") or f"Offer {i + 1}"
+        price = d.get(f"{oid}_price") or ""
+        p = doc.add_paragraph()
+        _docx_styled_run(p, name, bold=True, size_pt=13)
+        if price:
+            _docx_styled_run(p, f"  —  {price}", color=_BRONZE)
+        for key, label in (("hook", "Hook"), ("story", "Story"), ("promise", "Promise"), ("elevator", "Elevator Pitch")):
+            v = d.get(f"{oid}_{key}")
+            if not v:
+                continue
+            pp = doc.add_paragraph()
+            _docx_styled_run(pp, f"{label}: ", bold=True)
+            pp.add_run(v)
+
+
+def _docx_render_step5(doc: Document, d: Dict[str, str]) -> None:
+    fw = _safe_json(d.get("framework_json"))
+    if not fw or not fw.get("phases"):
+        return
+    for i, ph in enumerate(fw["phases"]):
+        doc.add_paragraph(f"{i + 1}. {ph.get('verb', '')} {ph.get('name', '')} — {ph.get('transformation', '')}")
+
+
+def _docx_render_step6(doc: Document, d: Dict[str, str]) -> None:
+    outline = _safe_json(d.get("book_outline_json"))
+    if not outline or not outline.get("chapters"):
+        return
+    for ch in outline["chapters"]:
+        doc.add_paragraph(f"{ch.get('n', '')}. {ch.get('title', '')}")
+
+
+_DOCX_STEP_RENDERERS = {
+    3: _docx_render_step3,
+    5: _docx_render_step5,
+    6: _docx_render_step6,
+}
+
+
+def _docx_step_extras(doc: Document, step_num: int, d: Dict[str, str]) -> None:
+    renderer = _DOCX_STEP_RENDERERS.get(step_num)
+    if renderer:
+        renderer(doc, d)
 
 
 # =============================== ENDPOINTS ===============================
