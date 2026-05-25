@@ -34,8 +34,11 @@ export function useStartCheckout() {
                 let msg = "Could not start checkout.";
                 try {
                     const j = await res.json();
-                    msg = j.detail || msg;
-                } catch {}
+                    if (typeof j.detail === "string") msg = j.detail;
+                    else if (j.detail && typeof j.detail === "object") msg = j.detail.message || msg;
+                } catch (parseErr) {
+                    console.warn("useStartCheckout: could not parse error JSON", parseErr);
+                }
                 if (res.status === 409) {
                     toast.success("You're already a Pro member!", {
                         description: "Head to your dashboard to enjoy unlimited access.",

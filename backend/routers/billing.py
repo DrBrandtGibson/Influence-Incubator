@@ -46,6 +46,8 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_LIFETIME = os.environ.get("STRIPE_PRICE_LIFETIME", "")
 STRIPE_PRICE_MONTHLY = os.environ.get("STRIPE_PRICE_MONTHLY", "")
+STRIPE_PRICE_EXTRA_LIFETIME = os.environ.get("STRIPE_PRICE_EXTRA_LIFETIME", "")
+STRIPE_PRICE_EXTRA_MONTHLY = os.environ.get("STRIPE_PRICE_EXTRA_MONTHLY", "")
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -61,12 +63,30 @@ PACKAGES = {
         "mode": "payment",
         "amount_cents": 9700,
         "label": "Lifetime",
+        "is_extra_slot": False,
     },
     "monthly": {
         "price_id": STRIPE_PRICE_MONTHLY,
         "mode": "subscription",
         "amount_cents": 1900,
         "label": "Monthly",
+        "is_extra_slot": False,
+    },
+    "extra_lifetime": {
+        "price_id": STRIPE_PRICE_EXTRA_LIFETIME,
+        "mode": "payment",
+        "amount_cents": 1999,
+        "label": "Additional Plan (Lifetime)",
+        "is_extra_slot": True,
+        "required_tier": "pro_lifetime",
+    },
+    "extra_monthly": {
+        "price_id": STRIPE_PRICE_EXTRA_MONTHLY,
+        "mode": "subscription",
+        "amount_cents": 1000,
+        "label": "Additional Plan (Monthly)",
+        "is_extra_slot": True,
+        "required_tier": "pro_monthly",
     },
 }
 
@@ -228,6 +248,26 @@ def _activate_pro_from_session(session_obj) -> Optional[str]:
     subscription_id = g(session_obj, "subscription")
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    # ===== Extra-plan-slot purchases: increment plan_credits, don't touch tier =====
+    if pkg in ("extra_lifetime", "extra_monthly"):
+        from services import quota as quota_svc
+        sub_for_tracking = subscription_id if pkg == "extra_monthly" else None
+        new_total = quota_svc.add_plan_credits(user_id, +1, sub_id=sub_for_tracking)
+        logger.info(f"Extra slot purchased ({pkg}) for {user_id}: credits now {new_total}")
+        # Also push CF tag for tracking — reuse existing tag scheme.
+        try:
+            prof = admin.table("profiles").select("email,full_name").eq("id", user_id).limit(1).execute()
+            if prof.data and prof.data[0].get("email"):
+                email = prof.data[0]["email"]
+                name = prof.data[0].get("full_name")
+                # Reuse base purchase tag for analytics consistency
+                base_pkg = "lifetime" if pkg == "extra_lifetime" else "monthly"
+                _fire_and_forget(cf.sync_purchase(email, name, base_pkg), label=f"cf.sync_extra<{email}>")
+        except Exception as e:
+            logger.warning("CF tag-back for extra slot failed: %s", e)
+        return user_id
+
+    # ===== Standard Pro purchase =====
     update: dict = {
         "stripe_customer_id": customer_id,
         "purchased_at": now_iso,
@@ -333,18 +373,39 @@ async def create_checkout(body: CheckoutRequest, user: CurrentUser = Depends(req
     _ensure_configured()
     pkg = (body.package or "").lower()
     if pkg not in PACKAGES:
-        raise HTTPException(status_code=400, detail="Invalid package. Must be 'lifetime' or 'monthly'.")
+        raise HTTPException(status_code=400, detail="Invalid package.")
+    config = PACKAGES[pkg]
+    if not config.get("price_id"):
+        raise HTTPException(status_code=503, detail=f"Price for {pkg} not configured on server.")
 
     profile = _get_profile(user.id)
-    if _is_pro(profile):
-        raise HTTPException(status_code=409, detail="You already have Pro access.")
+    is_extra = bool(config.get("is_extra_slot"))
+
+    if is_extra:
+        # Extra-plan checkouts require the user already be on the matching tier.
+        required = config.get("required_tier")
+        current = profile.get("subscription_status")
+        if required == "pro_lifetime" and current != "pro_lifetime":
+            raise HTTPException(status_code=403, detail={
+                "code": "lifetime_required",
+                "message": "Extra plan slots ($19.99 one-time) are available to Lifetime members. Upgrade to Lifetime first.",
+            })
+        if required == "pro_monthly" and current != "pro_monthly":
+            raise HTTPException(status_code=403, detail={
+                "code": "monthly_required",
+                "message": "Extra plan slots ($10/mo) are available to Monthly members. Upgrade to Monthly first, or buy Lifetime for 6 plans + $19.99 each thereafter.",
+            })
+    else:
+        # Regular Pro purchase: block if user is already Pro.
+        if _is_pro(profile):
+            raise HTTPException(status_code=409, detail="You already have Pro access.")
 
     origin = _safe_origin(body.origin)
-    config = PACKAGES[pkg]
     customer_id = _ensure_stripe_customer(profile)
 
-    success_url = f"{origin}/dashboard?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{origin}/pricing?canceled=1"
+    success_param = "extra_session_id" if is_extra else "session_id"
+    success_url = f"{origin}/dashboard?{success_param}={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/pricing?canceled=1" if not is_extra else f"{origin}/dashboard?extras_canceled=1"
 
     session = None
     try:
@@ -560,13 +621,30 @@ def _handle_invoice_paid(data_obj: dict) -> None:
 
 def _handle_subscription_deleted(data_obj: dict) -> None:
     customer_id = data_obj.get("customer")
+    sub_id = data_obj.get("id") or data_obj.get("subscription")
     if not customer_id:
         return
-    res = admin.table("profiles").select("id,subscription_status").eq("stripe_customer_id", customer_id).limit(1).execute()
+    res = admin.table("profiles").select("id,subscription_status,stripe_subscription_id").eq("stripe_customer_id", customer_id).limit(1).execute()
     if not res.data:
         return
-    if res.data[0].get("subscription_status") == "pro_monthly":
-        _downgrade_to_free(res.data[0]["id"], reason="subscription_deleted")
+    profile = res.data[0]
+    uid = profile["id"]
+    main_sub_id = profile.get("stripe_subscription_id")
+
+    # If this is the user's MAIN monthly subscription -> downgrade to free.
+    if sub_id and main_sub_id and sub_id == main_sub_id:
+        if profile.get("subscription_status") == "pro_monthly":
+            _downgrade_to_free(uid, reason="subscription_deleted")
+        return
+
+    # Otherwise it may be an extra-slot subscription -> decrement credits only.
+    if sub_id:
+        from services import quota as quota_svc
+        try:
+            new_total = quota_svc.remove_extra_subscription(uid, sub_id)
+            logger.info("Extra-slot sub canceled for %s: credits now %s", uid, new_total)
+        except Exception as e:
+            logger.warning("remove_extra_subscription failed for %s/%s: %s", uid, sub_id, e)
 
 
 def _handle_charge_refunded(data_obj: dict) -> None:

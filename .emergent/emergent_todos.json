@@ -1,22 +1,14 @@
 [
   {
-    "content": "Refactor _build_pdf (extract cover + step section helpers)",
+    "content": "Fix isExtra ReferenceError + extra_session_id polling in Dashboard.jsx",
     "status": "completed"
   },
   {
-    "content": "Refactor _build_docx + _docx_step_extras (extract step renderers + styled-run helper)",
-    "status": "completed"
+    "content": "Comprehensive E2E testing of Quotas, Deletions, and Extra Plan Purchases (backend + frontend)",
+    "status": "in_progress"
   },
   {
-    "content": "Refactor AIAssistInput.runAI (extract buildAIRequest + parseSSEEvent + consumeStream)",
-    "status": "completed"
-  },
-  {
-    "content": "Fix critical index-as-key in StepFrame stack rows with stable _id (UUID)",
-    "status": "completed"
-  },
-  {
-    "content": "Verify all changes: lint + service smoke + UI render",
-    "status": "completed"
+    "content": "Update plan.md with Phase 11.6 completion + fix details",
+    "status": "pending"
   }
 ]

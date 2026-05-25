@@ -198,7 +198,9 @@ def _build_pdf(plan: dict, inputs: List[dict], is_pro: bool) -> bytes:
 
     _pdf_cover(plan, is_pro, styles, story)
 
-    for step_num in range(1, 8):
+    # Free users only get Steps 1 & 2 in the export, regardless of what's filled in.
+    step_range = range(1, 8) if is_pro else range(1, 3)
+    for step_num in step_range:
         _pdf_step_header(step_num, styles, story)
         step_data = data.get(step_num, {})
         if not step_data:
@@ -208,6 +210,18 @@ def _build_pdf(plan: dict, inputs: List[dict], is_pro: bool) -> bytes:
         renderer = _PDF_STEP_RENDERERS.get(step_num)
         if renderer:
             renderer(step_data, story, styles)
+
+    # Footer for free users: list locked steps and upgrade CTA
+    if not is_pro:
+        story.append(PageBreak())
+        story.append(_para("STEPS 3 – 7 LOCKED", styles["eyebrow"]))
+        story.append(_para("Upgrade to Pro to export the full 7-step plan", styles["stepHeading"]))
+        story.append(_para(
+            "Your free export includes Steps 1 (DEFINE) and 2 (EXTRACT). The remaining five steps "
+            "— FRAME, IGNITE, NURTURE, EXPAND, and DELIVER — are part of Pro. Visit your dashboard "
+            "and choose Lifetime ($97 one-time) or Monthly ($19/mo) to unlock everything, including "
+            "the editable Word export.",
+            styles["body"]))
 
     on_page = _on_page_free if not is_pro else _on_page_pro
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)

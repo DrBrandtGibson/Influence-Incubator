@@ -1,0 +1,99 @@
+{
+  "summary": "Completed comprehensive testing of quota system, extra plan slot purchases, plan deletion, webhook handling, and export restrictions. Backend: 19/20 tests passed (95%). All critical quota enforcement, billing checkout, webhook credit management, and export tier restrictions are working correctly.",
+  "backend_issues": {
+    "minor_bugs": [
+      {
+        "endpoint": "DELETE /api/plans/{id}",
+        "issue": "Returns 404 instead of 403 when attempting to delete another user's plan",
+        "impact": "Low - RLS filters out the plan before ownership check, resulting in 404. This is acceptable from a security perspective as it doesn't leak information about plan existence.",
+        "fix_priority": "LOW",
+        "status": "acceptable_behavior"
+      }
+    ],
+    "critical_bugs": [],
+    "flaky_endpoints": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "testing_issues": [
+      {
+        "component": "Signup form",
+        "issue": "Playwright test automation had selector issues with signup form fields",
+        "impact": "Could not complete full E2E frontend testing via automation",
+        "note": "Code review confirms all required UI elements (quota indicator, delete buttons, buy extra slot buttons) are present in Dashboard.jsx with proper data-testid attributes. Manual testing or adjusted selectors needed."
+      }
+    ]
+  },
+  "passed_tests": [
+    "GET /api/plans/quota - returns correct tier, base_allowance, credits, limit, used, remaining for free users",
+    "GET /api/plans/quota - returns correct values for pro_monthly users with extra_package='extra_monthly' and extra_price_cents=1000",
+    "GET /api/plans/quota - returns correct values for pro_lifetime users with extra_package='extra_lifetime' and extra_price_cents=1999",
+    "POST /api/plans - allows creation when within quota",
+    "POST /api/plans - returns 402 with detail.code='plan_quota_exceeded' when used >= limit",
+    "DELETE /api/plans/{id} - permanently removes plan and frees quota slot (used count decrements)",
+    "DELETE /api/plans/{id} - returns 404 for non-existent plans",
+    "POST /api/billing/checkout with package='extra_lifetime' - returns 403 with code='lifetime_required' for non-lifetime users",
+    "POST /api/billing/checkout with package='extra_monthly' - returns 403 with code='monthly_required' for non-monthly users",
+    "POST /api/billing/checkout with package='extra_lifetime' - creates Stripe Checkout session for lifetime users",
+    "POST /api/billing/checkout with package='extra_monthly' - creates Stripe Checkout session for monthly users",
+    "POST /api/webhook/stripe with checkout.session.completed for extra_lifetime - increments plan_credits by 1",
+    "POST /api/webhook/stripe with checkout.session.completed for extra_monthly - increments plan_credits and tracks subscription ID",
+    "POST /api/webhook/stripe with customer.subscription.deleted for extra_monthly - decrements plan_credits by 1",
+    "POST /api/webhook/stripe with customer.subscription.deleted for main subscription - downgrades user to free tier",
+    "GET /api/plans/{id}/export.pdf as free user - returns PDF with only Steps 1-2 content (verified 5371 bytes)",
+    "GET /api/plans/{id}/export.pdf as pro user - returns PDF with all 7 steps (verified 7516 bytes, larger than free)",
+    "GET /api/plans/{id}/export.docx as free user - returns 402 with detail.code='pro_required'",
+    "GET /api/plans/{id}/export.docx as pro user - returns valid DOCX file (37016 bytes)"
+  ],
+  "test_report_links": [
+    "/app/backend_quota_test.py"
+  ],
+  "success_percentage": {
+    "backend": "95% (19/20 tests passed)",
+    "frontend": "Not fully tested due to automation selector issues - code review confirms UI elements present"
+  },
+  "action_item_for_main_agent": {
+    "critical": [],
+    "minor": [
+      "Optional: Consider returning 403 instead of 404 in DELETE /api/plans/{id} when plan exists but belongs to another user (currently returns 404 due to RLS filtering, which is acceptable)",
+      "Frontend E2E testing: Adjust Playwright selectors for signup form or perform manual verification of: (1) quota indicator display, (2) delete button functionality, (3) buy extra slot button, (4) checkout return polling with ?extra_session_id"
+    ],
+    "verification_needed": [
+      "Manual verification recommended: Dashboard quota indicator updates correctly after plan creation/deletion",
+      "Manual verification recommended: Buy extra slot button appears when quota.remaining=0 for pro users",
+      "Manual verification recommended: Checkout return flow with ?extra_session_id shows 'Plan slot added!' toast (not 'Welcome to Pro!')"
+    ]
+  },
+  "updated_files": [
+    "/app/backend_quota_test.py"
+  ],
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": true,
+  "detailed_findings": {
+    "quota_system": {
+      "status": "WORKING",
+      "details": "All three tiers (free=1, pro_monthly=1, pro_lifetime=6) correctly enforced. Plan credits properly tracked in user_metadata. Quota API returns all required fields."
+    },
+    "plan_deletion": {
+      "status": "WORKING",
+      "details": "Plans are permanently deleted along with plan_inputs, plan_steps. Quota slot is freed immediately (used count decrements). Verified by creating plan, deleting it, and confirming quota.used went from 1 to 0."
+    },
+    "extra_slot_checkout": {
+      "status": "WORKING",
+      "details": "Both extra_lifetime ($19.99 one-time) and extra_monthly ($10/mo) checkout sessions created successfully. Tier restrictions enforced (403 with appropriate error codes when wrong tier attempts purchase)."
+    },
+    "webhook_credit_management": {
+      "status": "WORKING",
+      "details": "checkout.session.completed webhooks correctly increment plan_credits for both extra_lifetime and extra_monthly. Subscription IDs tracked in user_metadata.extra_sub_ids for monthly extras. customer.subscription.deleted correctly decrements credits for extra subs and downgrades to free for main sub."
+    },
+    "export_restrictions": {
+      "status": "WORKING",
+      "details": "Free users: PDF export includes only Steps 1-2 (hardcoded in exports.py line 202: range(1,3)). DOCX export returns 402 pro_required. Pro users: PDF includes all 7 steps, DOCX export succeeds. File sizes confirm different content (free PDF: 5371 bytes, pro PDF: 7516 bytes, pro DOCX: 37016 bytes)."
+    },
+    "frontend_code_review": {
+      "status": "CODE_VERIFIED",
+      "details": "Dashboard.jsx contains all required UI elements with proper data-testid attributes: quota-indicator (line 220), delete-plan buttons (line 273), buy-extra-slot-button (line 230), buy-extra-slot-card (line 314). Polling logic for both session_id and extra_session_id implemented (lines 59-129). isExtra variable properly defined (line 63) - previous bug fix confirmed in code."
+    }
+  }
+}

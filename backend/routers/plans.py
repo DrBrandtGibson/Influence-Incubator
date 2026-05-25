@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 from auth_supabase import require_user, anon_client_with_token, admin, CurrentUser
-from access import has_pro_access
+from services import quota as quota_svc
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -22,16 +22,22 @@ async def list_plans(user: CurrentUser = Depends(require_user)):
     return {"plans": res.data or []}
 
 
+@router.get("/quota")
+async def get_plan_quota(user: CurrentUser = Depends(require_user)):
+    """Return the user's current plan quota state (tier, limit, used, remaining, extras info)."""
+    profile_res = admin.table("profiles").select("subscription_status").eq("id", user.id).limit(1).execute()
+    status = profile_res.data[0].get("subscription_status") if profile_res.data else None
+    return quota_svc.get_quota(user.id, status)
+
+
 @router.post("", status_code=201)
 async def create_plan(body: CreatePlanIn, user: CurrentUser = Depends(require_user)):
+    # Quota enforcement (Free=1, pro_monthly=1+credits, pro_lifetime=6+credits)
+    profile_res = admin.table("profiles").select("subscription_status").eq("id", user.id).limit(1).execute()
+    status = profile_res.data[0].get("subscription_status") if profile_res.data else None
+    quota_svc.assert_can_create_plan(user.id, status)
+
     cli = anon_client_with_token(user.token)
-    # Free-tier 1-plan limit
-    profile_res = cli.table("profiles").select("*").eq("id", user.id).limit(1).execute()
-    profile = profile_res.data[0] if profile_res.data else None
-    if not has_pro_access(profile):
-        existing = cli.table("plans").select("id").execute()
-        if existing.data and len(existing.data) >= 1:
-            raise HTTPException(status_code=402, detail={"code": "plan_limit_reached", "message": "Free plan limit reached. Upgrade to Pro for unlimited plans."})
     payload = body.dict()
     payload["user_id"] = user.id
     payload["current_step"] = 1
@@ -39,10 +45,32 @@ async def create_plan(body: CreatePlanIn, user: CurrentUser = Depends(require_us
     if not res.data:
         raise HTTPException(status_code=500, detail="Could not create plan")
     plan = res.data[0]
-    # Initialize 7 plan_steps records (use service role to bypass RLS for bulk init)
     rows = [{"plan_id": plan["id"], "step_num": n, "status": "not_started"} for n in range(1, 8)]
     admin.table("plan_steps").insert(rows).execute()
     return plan
+
+
+@router.delete("/{plan_id}")
+async def delete_plan(plan_id: str, user: CurrentUser = Depends(require_user)):
+    """Permanently delete a plan and all dependent rows. Quota slot is freed."""
+    # Verify ownership via anon client (RLS enforces user_id = auth.uid())
+    cli = anon_client_with_token(user.token)
+    own = cli.table("plans").select("id,user_id").eq("id", plan_id).limit(1).execute()
+    if not own.data:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    if own.data[0].get("user_id") != user.id:
+        raise HTTPException(status_code=403, detail="Not your plan")
+
+    # Hard-delete dependent rows first (service role bypasses RLS).
+    # If FK ON DELETE CASCADE is defined this is redundant but harmless.
+    for table in ("plan_inputs", "plan_steps", "ai_runs"):
+        try:
+            admin.table(table).delete().eq("plan_id", plan_id).execute()
+        except Exception:
+            # Some installations may not have ai_runs; ignore.
+            pass
+    admin.table("plans").delete().eq("id", plan_id).execute()
+    return {"ok": True, "deleted_plan_id": plan_id}
 
 
 @router.get("/{plan_id}")

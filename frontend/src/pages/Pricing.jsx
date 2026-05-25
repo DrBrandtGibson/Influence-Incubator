@@ -45,7 +45,7 @@ export default function Pricing() {
                         ctaLabel={isPro ? "You have Pro access" : "Get Lifetime Access"}
                         features={[
                             "All 7 steps unlocked, forever",
-                            "Unlimited plans",
+                            "Up to 6 plans (add more for $19.99 each)",
                             "Unlimited AI generations",
                             "PDF + Word exports",
                             "Plan version history",
@@ -63,7 +63,7 @@ export default function Pricing() {
                         ctaLabel={isPro ? "You have Pro access" : "Start Monthly"}
                         features={[
                             "All 7 steps unlocked",
-                            "Unlimited plans",
+                            "1 active plan (add more for $10/mo each)",
                             "Unlimited AI generations",
                             "PDF + Word exports",
                             "Plan version history",
