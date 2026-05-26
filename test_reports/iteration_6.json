@@ -1,0 +1,155 @@
+{
+  "summary": "Phase 11.7 Lifetime Unlimited tier E2E testing completed successfully. All previously-blocked tests (from iteration_5) now PASS after DB constraint fix. Backend webhooks, quota logic, and frontend UI all working correctly for pro_lifetime_unlimited tier.",
+  "backend_issues": {
+    "critical_bugs": [],
+    "verified_working": [
+      {
+        "test": "Stripe webhook checkout.session.completed for lifetime_unlimited",
+        "status": "✅ PASS",
+        "details": "Profile successfully upgraded to pro_lifetime_unlimited, pro_until=null, stripe_subscription_id=null. Idempotent on replay."
+      },
+      {
+        "test": "Stripe webhook upgrade path (pro_monthly -> pro_lifetime_unlimited with fake sub_id)",
+        "status": "✅ PASS",
+        "details": "Profile upgraded successfully. Graceful degradation: warning log 'Could not cancel existing sub' present in backend logs, but activation still succeeded (as designed)."
+      },
+      {
+        "test": "ClickFunnels webhook $397 order for new email",
+        "status": "✅ PASS",
+        "details": "New Supabase user auto-created with pro_lifetime_unlimited status. Email confirmed, profile activated."
+      },
+      {
+        "test": "ClickFunnels webhook $397 upgrade (pro_lifetime -> pro_lifetime_unlimited)",
+        "status": "✅ PASS",
+        "details": "TIER_RANK logic working correctly. Existing pro_lifetime user upgraded to pro_lifetime_unlimited."
+      },
+      {
+        "test": "ClickFunnels webhook $97 for pro_lifetime_unlimited user (no downgrade)",
+        "status": "✅ PASS",
+        "details": "TIER_RANK protection working. User remains pro_lifetime_unlimited (not downgraded to pro_lifetime)."
+      },
+      {
+        "test": "ClickFunnels webhook $97 for new user (regression check)",
+        "status": "✅ PASS",
+        "details": "New user correctly set to pro_lifetime (not unlimited). $97 tier still works as expected."
+      }
+    ],
+    "code_verified_correct": [
+      {
+        "file": "/app/backend/services/quota.py",
+        "status": "✅ CORRECT",
+        "details": "UNLIMITED_TIERS includes 'pro_lifetime_unlimited'. get_quota returns {unlimited: true, limit: null, remaining: null} for unlimited users."
+      },
+      {
+        "file": "/app/backend/routers/billing.py",
+        "status": "✅ CORRECT",
+        "details": "Checkout blocks extras for unlimited users (code='unlimited_no_extras_needed'). Blocks re-purchase of lifetime_unlimited. Refund eligibility includes pro_lifetime_unlimited."
+      },
+      {
+        "file": "/app/backend/routers/clickfunnels.py",
+        "status": "✅ CORRECT",
+        "details": "TIER_RANK prevents downgrades. package_from_amount returns 'lifetime_unlimited' for amount_cents >= 30000."
+      },
+      {
+        "file": "/app/backend/services/clickfunnels.py",
+        "status": "✅ CORRECT",
+        "details": "TAG_PURCHASE_LIFETIME_UNLIMITED='incubator_formula_unlimited' applied for lifetime_unlimited purchases."
+      },
+      {
+        "file": "/app/backend/access.py",
+        "status": "✅ CORRECT",
+        "details": "has_pro_access includes 'pro_lifetime_unlimited' in status check."
+      },
+      {
+        "file": "/app/backend/routers/exports.py",
+        "status": "✅ CORRECT",
+        "details": "PDF export includes all 7 steps for pro_lifetime_unlimited users (no watermark). DOCX export allowed (not 402)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "verified_working": [
+      {
+        "component": "Dashboard.jsx quota indicator",
+        "status": "✅ PASS",
+        "details": "For pro_lifetime_unlimited users: displays 'X plans · Unlimited' with infinity icon (data-testid=quota-unlimited-label). No 'buy-extra-slot-button' or 'buy-extra-slot-card' visible."
+      },
+      {
+        "component": "SubscriptionPanel.jsx (unlimited user)",
+        "status": "✅ PASS",
+        "details": "Shows 'Lifetime Unlimited Pro' label. 'upgrade-to-unlimited-row' is NOT visible (correct)."
+      },
+      {
+        "component": "SubscriptionPanel.jsx (lifetime user)",
+        "status": "✅ PASS",
+        "details": "Shows 'Lifetime Pro' label. 'upgrade-to-unlimited-row' IS visible with 'Want unlimited plans? Upgrade to Lifetime Unlimited' message."
+      },
+      {
+        "component": "Pricing.jsx (unlimited user)",
+        "status": "✅ PASS",
+        "details": "All three pricing cards show 'You're on Unlimited'. Lifetime Unlimited card CTA button is disabled."
+      },
+      {
+        "component": "Pricing.jsx (lifetime user)",
+        "status": "✅ PASS",
+        "details": "Lifetime Unlimited card shows 'Upgrade to Unlimited' and CTA button is enabled."
+      },
+      {
+        "component": "AuthContext.jsx",
+        "status": "✅ CORRECT",
+        "details": "isUnlimited boolean correctly checks profile?.subscription_status === 'pro_lifetime_unlimited'"
+      }
+    ]
+  },
+  "passed_tests": [
+    "Stripe webhook activates pro_lifetime_unlimited (new purchase)",
+    "Stripe webhook upgrades pro_monthly -> pro_lifetime_unlimited (with graceful sub cancel failure)",
+    "ClickFunnels webhook creates new user with pro_lifetime_unlimited ($397)",
+    "ClickFunnels webhook upgrades pro_lifetime -> pro_lifetime_unlimited ($397)",
+    "ClickFunnels webhook prevents downgrade (pro_lifetime_unlimited user receives $97 order)",
+    "ClickFunnels webhook $97 still creates pro_lifetime users (regression check)",
+    "Dashboard quota indicator shows 'X plans · Unlimited' with infinity icon",
+    "Dashboard hides buy-extra-slot-button for unlimited users",
+    "Dashboard hides buy-extra-slot-card for unlimited users",
+    "Dashboard hides upgrade-promo-card for unlimited users",
+    "SubscriptionPanel shows 'Lifetime Unlimited Pro' for unlimited users",
+    "SubscriptionPanel hides upgrade-to-unlimited-row for unlimited users",
+    "SubscriptionPanel shows 'Lifetime Pro' for lifetime users",
+    "SubscriptionPanel shows upgrade-to-unlimited-row for lifetime users",
+    "Pricing page shows 'You're on Unlimited' for all cards (unlimited user)",
+    "Pricing page disables Lifetime Unlimited CTA for unlimited users",
+    "Pricing page shows 'Upgrade to Unlimited' for lifetime users",
+    "Pricing page enables Lifetime Unlimited CTA for lifetime users"
+  ],
+  "test_report_links": [
+    "/app/tests/backend_test_lifetime_unlimited.py",
+    ".screenshots/dashboard_unlimited.png",
+    ".screenshots/dashboard_lifetime.png",
+    ".screenshots/pricing_unlimited.png",
+    ".screenshots/pricing_lifetime.png"
+  ],
+  "action_item_for_main_agent": "",
+  "updated_files": [
+    "/app/tests/backend_test_lifetime_unlimited.py"
+  ],
+  "success_percentage": {
+    "backend_webhooks": "100% (6/6 webhook tests passed)",
+    "backend_code_logic": "100% (all code correctly implements requirements)",
+    "frontend_ui": "100% (6/6 UI component tests passed)",
+    "overall": "100% (all previously-blocked tests now passing)"
+  },
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_test_itself": false,
+  "notes": [
+    "DB constraint fix (002_lifetime_unlimited.sql) successfully applied - 'pro_lifetime_unlimited' is now an accepted value in profiles.subscription_status",
+    "All backend webhook handlers (Stripe + ClickFunnels) correctly activate pro_lifetime_unlimited tier",
+    "TIER_RANK logic prevents downgrades from unlimited -> lifetime",
+    "Graceful degradation working: fake stripe_subscription_id during upgrade logs warning but doesn't block activation",
+    "Frontend correctly renders unlimited tier UI: infinity icon, 'Unlimited' labels, disabled CTAs, hidden upgrade prompts",
+    "Quota API logic verified correct (returns unlimited: true, limit: null, remaining: null)",
+    "Billing checkout logic verified correct (blocks extras and re-purchase for unlimited users)",
+    "Export endpoints verified correct (PDF includes all 7 steps, no watermark; DOCX allowed)",
+    "ClickFunnels tag 'incubator_formula_unlimited' applied for $397 purchases (verified in code, CF API call may fail silently in test env)"
+  ]
+}
