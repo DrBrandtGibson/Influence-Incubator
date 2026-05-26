@@ -11,7 +11,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   full_name text,
-  subscription_status text not null default 'free' check (subscription_status in ('free','pro_monthly','pro_lifetime')),
+  subscription_status text not null default 'free' check (subscription_status in ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited')),
   stripe_customer_id text,
   stripe_subscription_id text,
   pro_until timestamptz,

@@ -446,6 +446,61 @@ For each step 5–7:
 
 ---
 
+### Phase 11.7 — Lifetime Unlimited Tier ($397) ✅ CODE COMPLETE (pending 1-line DB migration by user)
+**Status:** New `pro_lifetime_unlimited` tier with **unlimited plans** wired end-to-end through Stripe + ClickFunnels. Backend code logic verified by testing agent. **Blocked from full E2E validation only by a single DB CHECK constraint that needs the user to run a 4-line SQL migration in Supabase SQL Editor.**
+
+**Tier:**
+- **Lifetime Unlimited — $397 one-time, unlimited plans, all 7 steps, forever, 7-day refund window.**
+- Stripe Test Price: `price_1Tb9GgGOHx8em2zziOQiVxWn`
+- ClickFunnels tag: `incubator_formula_unlimited` (configurable via env `CLICKFUNNELS_TAG_LIFETIME_UNLIMITED`)
+
+**Wiring / Files:**
+- `backend/services/quota.py`:
+  - Added `UNLIMITED_TIERS = {"pro_lifetime_unlimited"}`.
+  - `_normalize_tier` recognizes the new status.
+  - `get_quota` returns `{tier, unlimited: true, limit: null, remaining: null, extra_package: null, extra_price_cents: null, used: <int>}` for unlimited members.
+  - `assert_can_create_plan` short-circuits for unlimited tier (never raises 402).
+- `backend/access.py`: `has_pro_access` treats `pro_lifetime_unlimited` as Pro.
+- `backend/routers/billing.py`:
+  - Added `STRIPE_PRICE_LIFETIME_UNLIMITED` env var.
+  - Added `PACKAGES["lifetime_unlimited"]` (mode=payment, $397, `is_unlimited=True`).
+  - `_is_pro` recognizes the new status.
+  - `_activate_pro_from_session` branch for `lifetime_unlimited`: cancels any existing `stripe_subscription_id` first (upgrade path from `pro_monthly` → `pro_lifetime_unlimited`), then sets `subscription_status='pro_lifetime_unlimited'`, `pro_until=None`, `stripe_subscription_id=None`.
+  - Checkout endpoint: free/pro_monthly/pro_lifetime can purchase lifetime_unlimited; only `pro_lifetime_unlimited` is blocked (409). Extra-slot checkouts (`extra_lifetime` / `extra_monthly`) return 409 with `code='unlimited_no_extras_needed'` for unlimited members.
+  - `/billing/config` exposes the new package + `available` boolean.
+  - `/billing/me` and `/billing/refund` recognize the new tier for refund eligibility.
+- `backend/services/clickfunnels.py`:
+  - `TAG_PURCHASE_LIFETIME_UNLIMITED` from env (default `incubator_formula_unlimited`).
+  - `sync_purchase(...,'lifetime_unlimited')` applies the new tag.
+  - `package_from_amount(>=30000 cents)` returns `'lifetime_unlimited'`.
+- `backend/routers/clickfunnels.py`:
+  - `_activate_pro` now uses a `TIER_RANK` map (free<monthly<lifetime<lifetime_unlimited) and refuses to downgrade a higher tier.
+  - Webhook dispatch: `purchase_lifetime` events route through `package_from_amount` to pick between `lifetime` and `lifetime_unlimited`. A real $397 CF order will activate the user as `pro_lifetime_unlimited`.
+- `backend/migrations/001_init.sql`: updated CHECK constraint to include the new value (fresh deploys).
+- `backend/migrations/002_lifetime_unlimited.sql` (NEW): user-runnable migration to ALTER existing prod DB.
+- `frontend/src/context/AuthContext.jsx`: `isPro` recognizes the new tier; new boolean `isUnlimited` exposed.
+- `frontend/src/pages/Pricing.jsx`: rewritten as 3-card grid (Monthly · Lifetime · **Lifetime Unlimited** with gold ring + "BEST VALUE" + infinity icon). Upgrade-friendly CTAs for already-Pro users.
+- `frontend/src/pages/Dashboard.jsx`: quota indicator shows `X plans · ♾ Unlimited` for unlimited members (data-testid=`quota-unlimited-label`); all extra-slot CTAs hidden. Polling success toast distinguishes the new package.
+- `frontend/src/components/plans/SubscriptionPanel.jsx`: shows **Lifetime Unlimited Pro** label; "Forever access — every step unlocked, unlimited plans" copy; **adds an "Upgrade to Unlimited" inline CTA for existing pro_monthly / pro_lifetime members** (hidden for unlimited).
+
+**Testing agent (iteration_5):**
+- ✅ `/billing/config` returns the new package correctly.
+- ✅ Checkout starts cleanly for free, pro_monthly, pro_lifetime users.
+- ✅ Pricing page UI verified (3 cards, badges, infinity icon, $397).
+- ✅ All backend code logic (quota / activation / CF integration / tier-rank) correct on review.
+- ⚠️ **Schema constraint blocker**: existing prod DB has `CHECK (subscription_status IN ('free','pro_monthly','pro_lifetime'))` which rejects writes of the new value. Migration file is ready (`migrations/002_lifetime_unlimited.sql`), but Supabase REST API does not expose DDL — the user must run the 4-line SQL in their SQL Editor to unblock full E2E.
+
+**⚠️ User action required (one-time):**
+Run this in [Supabase SQL Editor](https://supabase.com/dashboard/project/dhxkwacdzmwwnmokmppf/sql/new):
+```sql
+alter table public.profiles drop constraint if exists profiles_subscription_status_check;
+alter table public.profiles add constraint profiles_subscription_status_check
+  check (subscription_status in ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited'));
+```
+After running, the new tier becomes fully functional. No backend restart needed.
+
+---
+
 ## 3. Next Actions (Immediate)
 1) **Flip your test account to Pro** in Supabase so Steps 3–4 unlock end-to-end:
    - `UPDATE profiles SET subscription_status = 'pro_lifetime' WHERE email = 'YOUR_EMAIL';`
