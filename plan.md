@@ -446,8 +446,8 @@ For each step 5–7:
 
 ---
 
-### Phase 11.7 — Lifetime Unlimited Tier ($397) ✅ CODE COMPLETE (pending 1-line DB migration by user)
-**Status:** New `pro_lifetime_unlimited` tier with **unlimited plans** wired end-to-end through Stripe + ClickFunnels. Backend code logic verified by testing agent. **Blocked from full E2E validation only by a single DB CHECK constraint that needs the user to run a 4-line SQL migration in Supabase SQL Editor.**
+### Phase 11.7 — Lifetime Unlimited Tier ($397) ✅ COMPLETE
+**Status:** End-to-end live and verified. New `pro_lifetime_unlimited` tier with **unlimited plans**, wired through Stripe + ClickFunnels. Testing agent iteration_6: **100% pass (18/18 tests)**, no critical or minor bugs.
 
 **Tier:**
 - **Lifetime Unlimited — $397 one-time, unlimited plans, all 7 steps, forever, 7-day refund window.**
@@ -483,21 +483,24 @@ For each step 5–7:
 - `frontend/src/pages/Dashboard.jsx`: quota indicator shows `X plans · ♾ Unlimited` for unlimited members (data-testid=`quota-unlimited-label`); all extra-slot CTAs hidden. Polling success toast distinguishes the new package.
 - `frontend/src/components/plans/SubscriptionPanel.jsx`: shows **Lifetime Unlimited Pro** label; "Forever access — every step unlocked, unlimited plans" copy; **adds an "Upgrade to Unlimited" inline CTA for existing pro_monthly / pro_lifetime members** (hidden for unlimited).
 
-**Testing agent (iteration_5):**
-- ✅ `/billing/config` returns the new package correctly.
-- ✅ Checkout starts cleanly for free, pro_monthly, pro_lifetime users.
-- ✅ Pricing page UI verified (3 cards, badges, infinity icon, $397).
-- ✅ All backend code logic (quota / activation / CF integration / tier-rank) correct on review.
-- ⚠️ **Schema constraint blocker**: existing prod DB has `CHECK (subscription_status IN ('free','pro_monthly','pro_lifetime'))` which rejects writes of the new value. Migration file is ready (`migrations/002_lifetime_unlimited.sql`), but Supabase REST API does not expose DDL — the user must run the 4-line SQL in their SQL Editor to unblock full E2E.
+**Testing agent (iteration_6): 18/18 passed (100%)**
+- ✅ Stripe webhook activates pro_lifetime_unlimited on $397 checkout completion.
+- ✅ Upgrade path pro_monthly → pro_lifetime_unlimited works (gracefully handles sub-cancel failures).
+- ✅ CF webhook $397 auto-creates new Supabase user as pro_lifetime_unlimited; tag `incubator_formula_unlimited` applied.
+- ✅ CF webhook $397 upgrades existing pro_lifetime → pro_lifetime_unlimited (TIER_RANK).
+- ✅ TIER_RANK refuses downgrade: $97 order for an unlimited user is a no-op (no tier change).
+- ✅ Regression: $97 still activates `pro_lifetime` correctly.
+- ✅ Unlimited users can create plans without quota limits; extras checkouts return 409 `unlimited_no_extras_needed`; re-purchase returns 409.
+- ✅ PDF/DOCX exports unrestricted for unlimited tier.
+- ✅ Frontend Dashboard quota indicator: "X plans · ♾ Unlimited" rendered; no extras CTAs.
+- ✅ SubscriptionPanel: "Lifetime Unlimited Pro" label + no upgrade CTA for unlimited; lifetime users see "Upgrade to Unlimited" inline CTA.
+- ✅ Pricing page: 3-card grid, correct CTAs for each tier, disabled state for unlimited users.
 
-**⚠️ User action required (one-time):**
-Run this in [Supabase SQL Editor](https://supabase.com/dashboard/project/dhxkwacdzmwwnmokmppf/sql/new):
-```sql
-alter table public.profiles drop constraint if exists profiles_subscription_status_check;
-alter table public.profiles add constraint profiles_subscription_status_check
-  check (subscription_status in ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited'));
-```
-After running, the new tier becomes fully functional. No backend restart needed.
+**DB migration applied** (`migrations/002_lifetime_unlimited.sql`): CHECK constraint on `profiles.subscription_status` now permits `pro_lifetime_unlimited`.
+
+**⚠️ Production handoff (when going live):**
+1. Create a `$397` one-time Stripe Price in **live mode** (currently only the test mode price is wired) and update `STRIPE_PRICE_LIFETIME_UNLIMITED` in `backend/.env`.
+2. Confirm the CF tag `incubator_formula_unlimited` exists in your ClickFunnels workspace (the integration auto-creates it on first apply, but you may want it pre-staged for any funnels or workflows that trigger on it).
 
 ---
 
