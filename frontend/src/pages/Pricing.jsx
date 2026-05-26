@@ -1,17 +1,31 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowLeft, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
+import { Check, ArrowLeft, ShieldCheck, Sparkles, Loader2, Infinity as InfinityIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useStartCheckout } from "@/lib/useStartCheckout";
 
 export default function Pricing() {
     const navigate = useNavigate();
-    const { isAuthenticated, isPro } = useAuth();
+    const { isAuthenticated, isPro, isUnlimited, profile } = useAuth();
     const { start, loading } = useStartCheckout();
+
+    const currentStatus = profile?.subscription_status;
+    // Upgrade is available to: free users, monthly subs, or $97 lifetime members.
+    // It is NOT shown for users already on lifetime_unlimited.
+    const canUpgradeToUnlimited = !isUnlimited;
 
     function onCta(pkg) {
         if (!isAuthenticated) {
-            navigate("/signup?return=/pricing");
+            navigate(`/signup?return=/pricing&pkg=${pkg}`);
+            return;
+        }
+        // For unlimited package, allow even already-Pro users (upgrade path).
+        if (pkg === "lifetime_unlimited") {
+            if (isUnlimited) {
+                navigate("/dashboard");
+                return;
+            }
+            start(pkg);
             return;
         }
         if (isPro) {
@@ -20,6 +34,30 @@ export default function Pricing() {
         }
         start(pkg);
     }
+
+    const lifetimeCtaLabel = isUnlimited
+        ? "You're on Unlimited"
+        : currentStatus === "pro_lifetime"
+            ? "You have Lifetime"
+            : isPro
+                ? "You have Pro access"
+                : "Get Lifetime Access";
+
+    const unlimitedCtaLabel = isUnlimited
+        ? "You're on Unlimited"
+        : currentStatus === "pro_lifetime"
+            ? "Upgrade to Unlimited"
+            : currentStatus === "pro_monthly"
+                ? "Switch to Unlimited"
+                : "Get Lifetime Unlimited";
+
+    const monthlyCtaLabel = isUnlimited
+        ? "You're on Unlimited"
+        : currentStatus === "pro_monthly"
+            ? "You're on Monthly"
+            : isPro
+                ? "You have Pro access"
+                : "Start Monthly";
 
     return (
         <div data-testid="pricing-page" className="min-h-screen bg-background">
@@ -35,14 +73,31 @@ export default function Pricing() {
             </section>
 
             <section className="container-readable py-16 md:py-20">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-stretch">
                     <Card
-                        recommended
+                        pkg="monthly"
+                        title="Monthly"
+                        price="$19"
+                        cadence="per month, cancel anytime"
+                        ctaLabel={monthlyCtaLabel}
+                        features={[
+                            "All 7 steps unlocked",
+                            "1 active plan (add more for $10/mo each)",
+                            "Unlimited AI generations",
+                            "PDF + Word exports",
+                            "Plan version history",
+                            "7-day money-back guarantee"
+                        ]}
+                        loading={loading === "monthly"}
+                        disabled={!!loading || (isPro && currentStatus !== "free")}
+                        onClick={() => onCta("monthly")}
+                    />
+                    <Card
                         pkg="lifetime"
                         title="Lifetime"
                         price="$97"
                         cadence="one-time, forever"
-                        ctaLabel={isPro ? "You have Pro access" : "Get Lifetime Access"}
+                        ctaLabel={lifetimeCtaLabel}
                         features={[
                             "All 7 steps unlocked, forever",
                             "Up to 6 plans (add more for $19.99 each)",
@@ -56,56 +111,62 @@ export default function Pricing() {
                         onClick={() => onCta("lifetime")}
                     />
                     <Card
-                        pkg="monthly"
-                        title="Monthly"
-                        price="$19"
-                        cadence="per month, cancel anytime"
-                        ctaLabel={isPro ? "You have Pro access" : "Start Monthly"}
+                        recommended
+                        unlimited
+                        pkg="lifetime_unlimited"
+                        title="Lifetime Unlimited"
+                        price="$397"
+                        cadence="one-time, forever"
+                        ctaLabel={unlimitedCtaLabel}
                         features={[
-                            "All 7 steps unlocked",
-                            "1 active plan (add more for $10/mo each)",
+                            "All 7 steps unlocked, forever",
+                            "Unlimited plans — build as many as you want",
+                            "Priority access to new step releases",
                             "Unlimited AI generations",
                             "PDF + Word exports",
                             "Plan version history",
-                            "7-day money-back guarantee"
+                            "7-day money-back guarantee",
                         ]}
-                        loading={loading === "monthly"}
-                        disabled={!!loading || isPro}
-                        onClick={() => onCta("monthly")}
+                        loading={loading === "lifetime_unlimited"}
+                        disabled={!!loading || !canUpgradeToUnlimited}
+                        onClick={() => onCta("lifetime_unlimited")}
                     />
                 </div>
                 <div className="mt-10 flex items-center justify-center gap-3 text-sm text-muted-foreground">
                     <ShieldCheck className="h-5 w-5 text-brand-gold" />
-                    7-day money-back guarantee on both plans.
+                    7-day money-back guarantee on all plans.
                 </div>
             </section>
         </div>
     );
 }
 
-function Card({ title, price, cadence, features, ctaLabel, onClick, recommended, loading, disabled, pkg }) {
+function Card({ title, price, cadence, features, ctaLabel, onClick, recommended, loading, disabled, pkg, unlimited }) {
+    const testIdSuffix = pkg || title.toLowerCase().replace(/\s+/g, "-");
     return (
-        <div className={`relative editorial-card p-8 ${recommended ? "ring-2 ring-brand-gold" : ""}`} data-testid={`pricing-card-${title.toLowerCase()}`}>
+        <div className={`relative editorial-card p-8 flex flex-col ${recommended ? "ring-2 ring-brand-gold" : ""}`} data-testid={`pricing-card-${testIdSuffix}`}>
             {recommended && (
-                <span className="absolute -top-3 left-8 text-[10px] uppercase tracking-[0.18em] bg-brand-gold text-brand-charcoal px-2.5 py-1 rounded-full" data-testid="recommended-badge">Most popular</span>
+                <span className="absolute -top-3 left-8 text-[10px] uppercase tracking-[0.18em] bg-brand-gold text-brand-charcoal px-2.5 py-1 rounded-full" data-testid="recommended-badge">Best value</span>
             )}
-            <div className="label-eyebrow text-brand-bronze">{title}</div>
+            <div className="label-eyebrow text-brand-bronze inline-flex items-center gap-2">
+                {unlimited && <InfinityIcon className="h-3.5 w-3.5 text-brand-gold" />} {title}
+            </div>
             <div className="mt-3 flex items-baseline gap-1.5">
                 <span className="font-serif text-6xl tracking-[-0.02em]">{price}</span>
                 {title === "Monthly" && <span className="text-muted-foreground">/mo</span>}
             </div>
             <p className="text-xs text-muted-foreground mt-1">{cadence}</p>
             <div className="gold-divider my-6" />
-            <ul className="space-y-3 text-sm">
-                {features.map((f, i) => (
-                    <li key={i} className="flex gap-3"><Check className="h-4 w-4 mt-0.5 text-brand-gold" /><span>{f}</span></li>
+            <ul className="space-y-3 text-sm flex-1">
+                {features.map((f) => (
+                    <li key={f} className="flex gap-3"><Check className="h-4 w-4 mt-0.5 text-brand-gold flex-shrink-0" /><span>{f}</span></li>
                 ))}
             </ul>
             <Button
                 onClick={onClick}
                 disabled={disabled}
                 className={`mt-7 w-full h-11 rounded-xl ${recommended ? "cta-red" : ""}`}
-                data-testid={`pricing-${title.toLowerCase()}-cta-button`}
+                data-testid={`pricing-${testIdSuffix}-cta-button`}
                 data-package={pkg}
             >
                 {loading ? (

@@ -107,25 +107,34 @@ def _create_supabase_user(email: str, full_name: Optional[str]) -> Optional[str]
 
 
 def _activate_pro(user_id: str, package: str) -> None:
-    """Set profile.subscription_status = pro_lifetime (idempotent)."""
+    """Set profile.subscription_status (idempotent).
+
+    `package` may be 'lifetime_unlimited' | 'lifetime' | 'monthly'.
+    Never downgrades a higher tier to a lower one.
+    """
+    TIER_RANK = {"free": 0, "pro_monthly": 1, "pro_lifetime": 2, "pro_lifetime_unlimited": 3}
+    PKG_TO_STATUS = {
+        "lifetime_unlimited": "pro_lifetime_unlimited",
+        "lifetime": "pro_lifetime",
+        "monthly": "pro_monthly",
+    }
+    new_status = PKG_TO_STATUS.get(package, "pro_lifetime")
     try:
-        # Fetch current state
         cur = admin.table("profiles").select("subscription_status,purchased_at").eq("id", user_id).limit(1).execute()
         if cur.data:
-            current_status = cur.data[0].get("subscription_status")
-            # Don't downgrade a lifetime member to monthly via this path.
-            if current_status == "pro_lifetime":
-                logger.info("Profile %s already pro_lifetime — skipping.", user_id)
+            current_status = cur.data[0].get("subscription_status") or "free"
+            if TIER_RANK.get(current_status, 0) >= TIER_RANK.get(new_status, 0) and current_status != "free":
+                logger.info("Profile %s already at %s (>= %s) — skipping.", user_id, current_status, new_status)
                 return
 
         update: Dict[str, Any] = {
-            "subscription_status": "pro_lifetime" if package == "lifetime" else "pro_monthly",
+            "subscription_status": new_status,
             "purchased_at": datetime.now(timezone.utc).isoformat(),
         }
-        if package == "lifetime":
+        if package in ("lifetime", "lifetime_unlimited"):
             update["pro_until"] = None
         admin.table("profiles").update(update).eq("id", user_id).execute()
-        logger.info("Activated %s for profile %s (via ClickFunnels webhook)", update["subscription_status"], user_id)
+        logger.info("Activated %s for profile %s (via ClickFunnels webhook)", new_status, user_id)
     except Exception as e:
         logger.error("Profile activation failed for %s: %s", user_id, e)
 
@@ -226,7 +235,11 @@ async def clickfunnels_webhook(request: Request, background_tasks: BackgroundTas
 
     # 4. Dispatch by event_kind
     if event_kind == "purchase_lifetime":
-        background_tasks.add_task(_process_purchase, event, "lifetime")
+        # Distinguish $97 Lifetime vs $397 Lifetime Unlimited by amount.
+        pkg = cf.package_from_amount(event.get("amount_cents"))
+        if pkg not in ("lifetime", "lifetime_unlimited"):
+            pkg = "lifetime"
+        background_tasks.add_task(_process_purchase, event, pkg)
     elif event_kind == "purchase_monthly":
         background_tasks.add_task(_process_purchase, event, "monthly")
     elif event_kind == "refunded":

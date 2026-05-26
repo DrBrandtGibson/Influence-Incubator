@@ -1,14 +1,38 @@
 [
   {
-    "content": "Fix isExtra ReferenceError + extra_session_id polling in Dashboard.jsx",
+    "content": "Create $397 Stripe Price via API + add price ID to backend/.env",
     "status": "completed"
   },
   {
-    "content": "Comprehensive E2E testing of Quotas, Deletions, and Extra Plan Purchases (backend + frontend)",
+    "content": "Add pro_lifetime_unlimited tier to quota.py + access.py",
     "status": "completed"
   },
   {
-    "content": "Update plan.md with Phase 11.6 completion + fix details",
+    "content": "Add lifetime_unlimited package + upgrade path + extras block in billing.py",
     "status": "completed"
+  },
+  {
+    "content": "Wire CLICKFUNNELS_TAG_LIFETIME_UNLIMITED + sync_purchase branch in clickfunnels service",
+    "status": "completed"
+  },
+  {
+    "content": "Update CF webhook _process_purchase to detect $397 -> pro_lifetime_unlimited",
+    "status": "completed"
+  },
+  {
+    "content": "Update Pricing.jsx with 3-tier layout",
+    "status": "completed"
+  },
+  {
+    "content": "Update Dashboard.jsx (unlimited quota display, hide extras)",
+    "status": "completed"
+  },
+  {
+    "content": "Update SubscriptionPanel.jsx label for new tier",
+    "status": "completed"
+  },
+  {
+    "content": "E2E test the new tier (backend + frontend)",
+    "status": "in_progress"
   }
 ]

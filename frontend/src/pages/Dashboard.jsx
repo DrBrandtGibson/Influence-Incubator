@@ -15,7 +15,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Loader2, FileText, Lock, Sparkles, Clock, Trash2, Layers } from "lucide-react";
+import { Plus, Loader2, FileText, Lock, Sparkles, Clock, Trash2, Layers, Infinity as InfinityIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { STEPS } from "@/lib/steps";
@@ -93,10 +93,13 @@ export default function Dashboard() {
                             description: "You can now create another plan.",
                         });
                     } else {
+                        const pkg = j.package;
                         toast.success("Welcome to Pro!", {
-                            description: j.package === "lifetime"
-                                ? "Lifetime access unlocked — every step is yours, forever."
-                                : "Monthly Pro is live — all 7 steps unlocked. Cancel anytime.",
+                            description: pkg === "lifetime_unlimited"
+                                ? "Lifetime Unlimited unlocked — unlimited plans, every step, forever."
+                                : pkg === "lifetime"
+                                    ? "Lifetime access unlocked — every step is yours, forever."
+                                    : "Monthly Pro is live — all 7 steps unlocked. Cancel anytime.",
                         });
                     }
                     await refreshProfile();
@@ -143,7 +146,7 @@ export default function Dashboard() {
     }, []);
 
     function startNewPlan() {
-        if (quota && quota.remaining <= 0) {
+        if (quota && !quota.unlimited && quota.remaining <= 0) {
             // Friendly inline messaging — exact CTA depends on tier
             if (quota.tier === "free") {
                 toast.message("Free plan limit reached.", {
@@ -219,19 +222,27 @@ export default function Dashboard() {
             {quota && plans !== null && (
                 <div className="mb-6 flex items-center gap-3 text-sm text-muted-foreground" data-testid="quota-indicator">
                     <Layers className="h-4 w-4 text-brand-bronze" />
-                    <span><strong className="text-foreground">{quota.used}</strong> of <strong className="text-foreground">{quota.limit}</strong> plan slot{quota.limit === 1 ? "" : "s"} used</span>
-                    {quota.remaining === 0 && quota.tier !== "free" && (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={buyExtraSlot}
-                            disabled={!!extraLoading}
-                            className="ml-2 h-7 text-xs border-brand-gold/40 text-brand-bronze hover:bg-brand-gold/10"
-                            data-testid="buy-extra-slot-button"
-                        >
-                            {extraLoading ? <Loader2 className="h-3 w-3 animate-spin" /> :
-                                quota.tier === "pro_lifetime" ? "+ Buy extra slot · $19.99" : "+ Buy extra slot · $10/mo"}
-                        </Button>
+                    {quota.unlimited ? (
+                        <span data-testid="quota-unlimited-label">
+                            <strong className="text-foreground">{quota.used}</strong> plan{quota.used === 1 ? "" : "s"} · <span className="inline-flex items-center gap-1 text-brand-gold"><InfinityIcon className="h-3.5 w-3.5" /> Unlimited</span>
+                        </span>
+                    ) : (
+                        <>
+                            <span><strong className="text-foreground">{quota.used}</strong> of <strong className="text-foreground">{quota.limit}</strong> plan slot{quota.limit === 1 ? "" : "s"} used</span>
+                            {quota.remaining === 0 && quota.tier !== "free" && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={buyExtraSlot}
+                                    disabled={!!extraLoading}
+                                    className="ml-2 h-7 text-xs border-brand-gold/40 text-brand-bronze hover:bg-brand-gold/10"
+                                    data-testid="buy-extra-slot-button"
+                                >
+                                    {extraLoading ? <Loader2 className="h-3 w-3 animate-spin" /> :
+                                        quota.tier === "pro_lifetime" ? "+ Buy extra slot · $19.99" : "+ Buy extra slot · $10/mo"}
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             )}

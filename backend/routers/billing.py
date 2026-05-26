@@ -46,6 +46,7 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_LIFETIME = os.environ.get("STRIPE_PRICE_LIFETIME", "")
 STRIPE_PRICE_MONTHLY = os.environ.get("STRIPE_PRICE_MONTHLY", "")
+STRIPE_PRICE_LIFETIME_UNLIMITED = os.environ.get("STRIPE_PRICE_LIFETIME_UNLIMITED", "")
 STRIPE_PRICE_EXTRA_LIFETIME = os.environ.get("STRIPE_PRICE_EXTRA_LIFETIME", "")
 STRIPE_PRICE_EXTRA_MONTHLY = os.environ.get("STRIPE_PRICE_EXTRA_MONTHLY", "")
 
@@ -64,6 +65,14 @@ PACKAGES = {
         "amount_cents": 9700,
         "label": "Lifetime",
         "is_extra_slot": False,
+    },
+    "lifetime_unlimited": {
+        "price_id": STRIPE_PRICE_LIFETIME_UNLIMITED,
+        "mode": "payment",
+        "amount_cents": 39700,
+        "label": "Lifetime Unlimited",
+        "is_extra_slot": False,
+        "is_unlimited": True,
     },
     "monthly": {
         "price_id": STRIPE_PRICE_MONTHLY,
@@ -147,7 +156,7 @@ def _get_profile(user_id: str) -> dict:
 def _is_pro(profile: dict) -> bool:
     """Mirror access.has_pro_access but inline for direct usage."""
     status = profile.get("subscription_status")
-    if status == "pro_lifetime":
+    if status in ("pro_lifetime", "pro_lifetime_unlimited"):
         return True
     if status == "pro_monthly":
         pu = profile.get("pro_until")
@@ -274,7 +283,26 @@ def _activate_pro_from_session(session_obj) -> Optional[str]:
         "last_checkout_session_id": g(session_obj, "id"),
     }
 
-    if pkg == "lifetime":
+    if pkg == "lifetime_unlimited":
+        # Cancel any existing active monthly subscription before flipping tier
+        # (upgrade path: pro_monthly -> pro_lifetime_unlimited).
+        existing_sub = None
+        try:
+            prof_now = admin.table("profiles").select("stripe_subscription_id,subscription_status").eq("id", user_id).limit(1).execute()
+            if prof_now.data:
+                existing_sub = prof_now.data[0].get("stripe_subscription_id")
+        except Exception as e:
+            logger.warning("Could not read existing profile for upgrade-cancel: %s", e)
+        if existing_sub:
+            try:
+                stripe.Subscription.cancel(existing_sub)
+                logger.info("Canceled existing sub %s during upgrade to lifetime_unlimited for %s", existing_sub, user_id)
+            except stripe.error.StripeError as e:
+                logger.warning("Could not cancel existing sub %s during upgrade: %s", existing_sub, e)
+        update["subscription_status"] = "pro_lifetime_unlimited"
+        update["pro_until"] = None
+        update["stripe_subscription_id"] = None
+    elif pkg == "lifetime":
         update["subscription_status"] = "pro_lifetime"
         update["pro_until"] = None
         update["stripe_subscription_id"] = None
@@ -362,6 +390,12 @@ async def billing_config():
         "enabled": bool(STRIPE_SECRET_KEY and STRIPE_PRICE_LIFETIME and STRIPE_PRICE_MONTHLY),
         "packages": {
             "lifetime": {"amount_cents": 9700, "currency": "usd", "label": "Lifetime"},
+            "lifetime_unlimited": {
+                "amount_cents": 39700,
+                "currency": "usd",
+                "label": "Lifetime Unlimited",
+                "available": bool(STRIPE_PRICE_LIFETIME_UNLIMITED),
+            },
             "monthly": {"amount_cents": 1900, "currency": "usd", "label": "Monthly"},
         },
         "refund_window_days": REFUND_WINDOW_DAYS,
@@ -380,23 +414,34 @@ async def create_checkout(body: CheckoutRequest, user: CurrentUser = Depends(req
 
     profile = _get_profile(user.id)
     is_extra = bool(config.get("is_extra_slot"))
+    is_unlimited_pkg = bool(config.get("is_unlimited"))
+    current_status = profile.get("subscription_status")
 
     if is_extra:
+        # Unlimited members never need extra slots — block to avoid confusion.
+        if current_status == "pro_lifetime_unlimited":
+            raise HTTPException(status_code=409, detail={
+                "code": "unlimited_no_extras_needed",
+                "message": "You're on Lifetime Unlimited — you already have unlimited plans.",
+            })
         # Extra-plan checkouts require the user already be on the matching tier.
         required = config.get("required_tier")
-        current = profile.get("subscription_status")
-        if required == "pro_lifetime" and current != "pro_lifetime":
+        if required == "pro_lifetime" and current_status != "pro_lifetime":
             raise HTTPException(status_code=403, detail={
                 "code": "lifetime_required",
                 "message": "Extra plan slots ($19.99 one-time) are available to Lifetime members. Upgrade to Lifetime first.",
             })
-        if required == "pro_monthly" and current != "pro_monthly":
+        if required == "pro_monthly" and current_status != "pro_monthly":
             raise HTTPException(status_code=403, detail={
                 "code": "monthly_required",
                 "message": "Extra plan slots ($10/mo) are available to Monthly members. Upgrade to Monthly first, or buy Lifetime for 6 plans + $19.99 each thereafter.",
             })
+    elif is_unlimited_pkg:
+        # Upgrade-friendly: any non-unlimited user (free / pro_monthly / pro_lifetime) can buy this.
+        if current_status == "pro_lifetime_unlimited":
+            raise HTTPException(status_code=409, detail="You already have Lifetime Unlimited access.")
     else:
-        # Regular Pro purchase: block if user is already Pro.
+        # Regular Pro purchase (lifetime / monthly): block if user is already any Pro tier.
         if _is_pro(profile):
             raise HTTPException(status_code=409, detail="You already have Pro access.")
 
@@ -506,7 +551,7 @@ async def my_billing(user: CurrentUser = Depends(require_user)):
         "pro_until": profile.get("pro_until"),
         "purchased_at": profile.get("purchased_at"),
         "has_subscription": bool(profile.get("stripe_subscription_id")),
-        "refund_eligible": remaining is not None and profile.get("subscription_status") in ("pro_lifetime", "pro_monthly"),
+        "refund_eligible": remaining is not None and profile.get("subscription_status") in ("pro_lifetime", "pro_lifetime_unlimited", "pro_monthly"),
         "refund_window_seconds_remaining": int(remaining.total_seconds()) if remaining else 0,
         "refund_window_days": REFUND_WINDOW_DAYS,
     }
@@ -518,7 +563,7 @@ async def self_serve_refund(user: CurrentUser = Depends(require_user)):
     _ensure_configured()
     profile = _get_profile(user.id)
     status = profile.get("subscription_status")
-    if status not in ("pro_lifetime", "pro_monthly"):
+    if status not in ("pro_lifetime", "pro_lifetime_unlimited", "pro_monthly"):
         raise HTTPException(status_code=400, detail="No active Pro purchase to refund.")
 
     remaining = _refund_window_remaining(profile)

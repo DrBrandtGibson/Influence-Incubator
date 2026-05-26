@@ -1,9 +1,10 @@
 """Plan quota logic.
 
 Tier base allowances:
-  - free:         1 plan
-  - pro_monthly:  1 plan + $10/mo per additional slot (recurring)
-  - pro_lifetime: 6 plans + $19.99 one-time per additional slot (permanent)
+  - free:                  1 plan
+  - pro_monthly:           1 plan + $10/mo per additional slot (recurring)
+  - pro_lifetime:          6 plans + $19.99 one-time per additional slot
+  - pro_lifetime_unlimited: UNLIMITED plans, $397 one-time (no extras needed)
 
 Credit storage: `auth.users.user_metadata` (Supabase JSONB column, no schema
 migration needed). Specifically:
@@ -13,11 +14,16 @@ migration needed). Specifically:
 
 Plan counting: COUNT(plans WHERE user_id = X). Plans are HARD-deleted on user
 request, so this count automatically reflects active plans.
+
+Unlimited tier representation in `get_quota` payload:
+  - `limit`, `remaining` are returned as `None` (consumers must treat None as "no cap").
+  - `extra_package`, `extra_price_cents` are `None`.
+  - `unlimited: True` flag is set for unambiguous frontend rendering.
 """
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 
@@ -25,15 +31,19 @@ from auth_supabase import admin
 
 logger = logging.getLogger(__name__)
 
+# `pro_lifetime_unlimited` is intentionally omitted from this dict — it has no
+# numeric base because it's unlimited. Treat it separately in `get_quota`.
 BASE_ALLOWANCE: Dict[str, int] = {
     "free": 1,
     "pro_monthly": 1,
     "pro_lifetime": 6,
 }
 
+UNLIMITED_TIERS = {"pro_lifetime_unlimited"}
+
 
 def _normalize_tier(subscription_status: Optional[str]) -> str:
-    if subscription_status in ("pro_lifetime", "pro_monthly"):
+    if subscription_status in ("pro_lifetime_unlimited", "pro_lifetime", "pro_monthly"):
         return subscription_status
     return "free"
 
@@ -128,16 +138,32 @@ def count_active_plans(user_id: str) -> int:
         return 0
 
 
-def get_quota(user_id: str, subscription_status: Optional[str]) -> Dict:
+def get_quota(user_id: str, subscription_status: Optional[str]) -> Dict[str, Any]:
     """Compute the user's plan quota state."""
     tier = _normalize_tier(subscription_status)
+    used = count_active_plans(user_id)
+
+    # Unlimited tier — bypass numeric limits entirely.
+    if tier in UNLIMITED_TIERS:
+        return {
+            "tier": tier,
+            "unlimited": True,
+            "base_allowance": None,
+            "credits": 0,
+            "limit": None,
+            "used": used,
+            "remaining": None,
+            "extra_price_cents": None,
+            "extra_package": None,
+        }
+
     base = BASE_ALLOWANCE[tier]
     credits = get_plan_credits(user_id)
-    used = count_active_plans(user_id)
     limit = base + credits
     remaining = max(0, limit - used)
     return {
         "tier": tier,
+        "unlimited": False,
         "base_allowance": base,
         "credits": credits,
         "limit": limit,
@@ -148,8 +174,11 @@ def get_quota(user_id: str, subscription_status: Optional[str]) -> Dict:
     }
 
 
-def assert_can_create_plan(user_id: str, subscription_status: Optional[str]) -> Dict:
+def assert_can_create_plan(user_id: str, subscription_status: Optional[str]) -> Dict[str, Any]:
     q = get_quota(user_id, subscription_status)
+    # Unlimited tier never blocks.
+    if q.get("unlimited"):
+        return q
     if q["remaining"] <= 0:
         detail = {
             "code": "plan_quota_exceeded",

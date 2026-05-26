@@ -6,7 +6,7 @@ def has_pro_access(profile: dict) -> bool:
     if not profile:
         return False
     status = profile.get("subscription_status")
-    if status == "pro_lifetime":
+    if status in ("pro_lifetime", "pro_lifetime_unlimited"):
         return True
     if status == "pro_monthly":
         pu = profile.get("pro_until")

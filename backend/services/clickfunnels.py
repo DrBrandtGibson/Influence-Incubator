@@ -42,6 +42,7 @@ CLICKFUNNELS_USER_AGENT = os.environ.get("CLICKFUNNELS_USER_AGENT", "InfluenceIn
 
 TAG_SIGNUP = os.environ.get("CLICKFUNNELS_TAG_SIGNUP", "incubator_formula_signup").strip()
 TAG_PURCHASE_LIFETIME = os.environ.get("CLICKFUNNELS_TAG_LIFETIME", "incubator_formula_lifetime").strip()
+TAG_PURCHASE_LIFETIME_UNLIMITED = os.environ.get("CLICKFUNNELS_TAG_LIFETIME_UNLIMITED", "incubator_formula_unlimited").strip()
 TAG_PURCHASE_MONTHLY = os.environ.get("CLICKFUNNELS_TAG_MONTHLY", "incubator_formula_monthly").strip()
 TAG_REFUNDED = os.environ.get("CLICKFUNNELS_TAG_REFUNDED", "Incubator_formula_refunded").strip()
 TAG_DOWNGRADE = os.environ.get("CLICKFUNNELS_TAG_DOWNGRADE", "Incubator_formula_downgrade").strip()
@@ -199,7 +200,9 @@ async def sync_signup(email: str, full_name: Optional[str] = None) -> None:
 
 async def sync_purchase(email: str, full_name: Optional[str], package: str) -> None:
     pkg = (package or "").lower()
-    if pkg == "lifetime":
+    if pkg == "lifetime_unlimited":
+        tag = TAG_PURCHASE_LIFETIME_UNLIMITED
+    elif pkg == "lifetime":
         tag = TAG_PURCHASE_LIFETIME
     elif pkg == "monthly":
         tag = TAG_PURCHASE_MONTHLY
@@ -400,4 +403,7 @@ def package_from_amount(amount_cents: Optional[int]) -> str:
         return "lifetime"  # safest default — Pro lifetime
     if amount_cents <= 2500:
         return "monthly"
+    if amount_cents >= 30000:
+        # $300+ one-time → treat as Lifetime Unlimited ($397 SKU)
+        return "lifetime_unlimited"
     return "lifetime"

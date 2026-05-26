@@ -1,0 +1,182 @@
+{
+  "summary": "Phase 11.7 Lifetime Unlimited tier testing completed. CRITICAL DATABASE SCHEMA BUG prevents full functionality. Frontend UI is correctly implemented. Backend code logic is correct but cannot execute due to database constraint violation.",
+  "backend_issues": {
+    "critical_bugs": [
+      {
+        "file": "/app/backend/migrations/001_init.sql",
+        "line": 14,
+        "issue": "Database CHECK constraint on profiles.subscription_status does not include 'pro_lifetime_unlimited'",
+        "impact": "BLOCKS ALL FUNCTIONALITY - Users cannot be upgraded to pro_lifetime_unlimited tier via any method (Stripe webhook, ClickFunnels webhook, or manual admin update)",
+        "current_constraint": "check (subscription_status in ('free','pro_monthly','pro_lifetime'))",
+        "required_fix": "check (subscription_status in ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited'))",
+        "fix_priority": "CRITICAL",
+        "sql_fix": "ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_subscription_status_check; ALTER TABLE public.profiles ADD CONSTRAINT profiles_subscription_status_check CHECK (subscription_status IN ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited'));"
+      }
+    ],
+    "verified_working": [
+      {
+        "endpoint": "GET /api/billing/config",
+        "status": "✅ PASS",
+        "details": "lifetime_unlimited package correctly configured with amount_cents=39700, currency=usd, label='Lifetime Unlimited', available=true"
+      },
+      {
+        "endpoint": "POST /api/billing/checkout (free user)",
+        "status": "✅ PASS",
+        "details": "Free users can initiate checkout for lifetime_unlimited package, Stripe session created successfully"
+      },
+      {
+        "endpoint": "POST /api/billing/checkout (pro_monthly upgrade)",
+        "status": "✅ PASS",
+        "details": "pro_monthly users can upgrade to lifetime_unlimited"
+      },
+      {
+        "endpoint": "POST /api/billing/checkout (pro_lifetime upgrade)",
+        "status": "✅ PASS",
+        "details": "pro_lifetime users can upgrade to lifetime_unlimited"
+      }
+    ],
+    "blocked_by_schema_bug": [
+      {
+        "functionality": "Stripe webhook activation",
+        "endpoint": "POST /api/webhook/stripe",
+        "issue": "Cannot set subscription_status='pro_lifetime_unlimited' due to constraint violation",
+        "test_status": "BLOCKED"
+      },
+      {
+        "functionality": "ClickFunnels webhook activation",
+        "endpoint": "POST /api/webhook/clickfunnels",
+        "issue": "Cannot set subscription_status='pro_lifetime_unlimited' due to constraint violation",
+        "test_status": "BLOCKED"
+      },
+      {
+        "functionality": "Quota enforcement for unlimited users",
+        "endpoint": "GET /api/plans/quota",
+        "issue": "Cannot test - no way to create pro_lifetime_unlimited user",
+        "test_status": "BLOCKED"
+      },
+      {
+        "functionality": "Unlimited plan creation",
+        "endpoint": "POST /api/plans",
+        "issue": "Cannot test - no way to create pro_lifetime_unlimited user",
+        "test_status": "BLOCKED"
+      },
+      {
+        "functionality": "Extra slot blocking for unlimited",
+        "endpoint": "POST /api/billing/checkout (extra_*)",
+        "issue": "Cannot test - no way to create pro_lifetime_unlimited user",
+        "test_status": "BLOCKED"
+      }
+    ],
+    "code_review_findings": [
+      {
+        "file": "/app/backend/services/quota.py",
+        "status": "✅ CORRECT",
+        "details": "UNLIMITED_TIERS includes 'pro_lifetime_unlimited', get_quota returns unlimited=True with limit/remaining=None"
+      },
+      {
+        "file": "/app/backend/access.py",
+        "status": "✅ CORRECT",
+        "details": "has_pro_access includes 'pro_lifetime_unlimited' in status check"
+      },
+      {
+        "file": "/app/backend/routers/billing.py",
+        "status": "✅ CORRECT",
+        "details": "PACKAGES dict includes lifetime_unlimited with is_unlimited=True, checkout logic allows upgrades, blocks re-purchase, blocks extra slots for unlimited users, _activate_pro_from_session cancels existing subscription before upgrade"
+      },
+      {
+        "file": "/app/backend/services/clickfunnels.py",
+        "status": "✅ CORRECT",
+        "details": "package_from_amount returns 'lifetime_unlimited' for amount_cents >= 30000, sync_purchase applies TAG_PURCHASE_LIFETIME_UNLIMITED"
+      },
+      {
+        "file": "/app/backend/routers/clickfunnels.py",
+        "status": "✅ CORRECT",
+        "details": "_activate_pro has TIER_RANK preventing downgrades, correctly maps to 'pro_lifetime_unlimited'"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_verified_working": [
+      {
+        "component": "Pricing.jsx",
+        "status": "✅ PASS",
+        "details": "3 pricing cards rendered correctly (Monthly $19, Lifetime $97, Lifetime Unlimited $397). Lifetime Unlimited card has 'BEST VALUE' badge, gold ring (ring-2 ring-brand-gold), infinity icon, correct price $397, 'Unlimited plans — build as many as you want' feature bullet"
+      },
+      {
+        "component": "AuthContext.jsx",
+        "status": "✅ CORRECT",
+        "details": "isUnlimited boolean exposed, correctly checks profile?.subscription_status === 'pro_lifetime_unlimited'"
+      }
+    ],
+    "blocked_by_backend": [
+      {
+        "component": "Dashboard.jsx quota indicator",
+        "issue": "Cannot test unlimited quota display - no way to create pro_lifetime_unlimited user due to backend schema bug",
+        "expected_behavior": "Should show 'X plans · Unlimited' with infinity icon, no 'buy extra slot' button",
+        "test_status": "BLOCKED"
+      },
+      {
+        "component": "SubscriptionPanel.jsx",
+        "issue": "Cannot test 'Lifetime Unlimited Pro' label and upgrade CTAs - no way to create pro_lifetime_unlimited user",
+        "expected_behavior": "For unlimited users: show 'Lifetime Unlimited Pro' label, hide 'Upgrade to Unlimited' CTA. For pro_lifetime users: show 'Upgrade to Unlimited' CTA",
+        "test_status": "BLOCKED"
+      }
+    ]
+  },
+  "passed_tests": [
+    "GET /api/billing/config returns lifetime_unlimited package with correct configuration",
+    "POST /api/billing/checkout as free user creates Stripe session for lifetime_unlimited",
+    "POST /api/billing/checkout as pro_monthly user allows upgrade to lifetime_unlimited",
+    "POST /api/billing/checkout as pro_lifetime user allows upgrade to lifetime_unlimited",
+    "Pricing page renders 3 cards with correct styling and content",
+    "Lifetime Unlimited card has BEST VALUE badge and gold ring",
+    "Lifetime Unlimited card displays $397 price and infinity icon",
+    "Lifetime Unlimited card includes 'Unlimited plans' feature bullet",
+    "Backend code logic correctly implements all Phase 11.7 requirements"
+  ],
+  "test_report_links": [
+    "/app/tests/backend_test_phase_11_7.py",
+    "/app/tests/test_unlimited_tier_comprehensive.py",
+    ".screenshots/pricing_page_unlimited.png"
+  ],
+  "action_item_for_main_agent": {
+    "priority": "CRITICAL - BLOCKS ALL PHASE 11.7 FUNCTIONALITY",
+    "required_actions": [
+      {
+        "action": "Update database schema constraint",
+        "details": "Execute the following SQL in Supabase SQL Editor (https://supabase.com/dashboard/project/dhxkwacdzmwwnmokmppf/sql/new):",
+        "sql": "ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_subscription_status_check; ALTER TABLE public.profiles ADD CONSTRAINT profiles_subscription_status_check CHECK (subscription_status IN ('free','pro_monthly','pro_lifetime','pro_lifetime_unlimited'));",
+        "file_to_update": "/app/backend/migrations/001_init.sql line 14"
+      },
+      {
+        "action": "After schema fix, re-test all blocked functionality",
+        "tests_to_run": [
+          "Stripe webhook with lifetime_unlimited package",
+          "ClickFunnels webhook with $397 purchase",
+          "Quota API for unlimited users",
+          "Creating 7+ plans as unlimited user",
+          "Extra slot checkout blocked for unlimited users",
+          "Dashboard quota indicator for unlimited users",
+          "SubscriptionPanel display for unlimited users"
+        ]
+      },
+      {
+        "action": "Verify ClickFunnels tag application",
+        "details": "Ensure CLICKFUNNELS_TAG_LIFETIME_UNLIMITED='incubator_formula_unlimited' is applied when sync_purchase is called with 'lifetime_unlimited' package"
+      }
+    ],
+    "notes": "All backend code logic is correctly implemented. The only blocker is the database constraint. Once fixed, the entire feature should work end-to-end."
+  },
+  "updated_files": [
+    "/app/tests/backend_test_phase_11_7.py",
+    "/app/tests/test_unlimited_tier_comprehensive.py"
+  ],
+  "success_percentage": {
+    "backend_api_endpoints": "40% (4/10 testable without schema fix)",
+    "backend_code_logic": "100% (all code correctly implements requirements)",
+    "frontend_ui": "50% (pricing page verified, dashboard/subscription panel blocked)",
+    "overall": "45% (critical schema bug blocks majority of testing)"
+  },
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_test_itself": false
+}

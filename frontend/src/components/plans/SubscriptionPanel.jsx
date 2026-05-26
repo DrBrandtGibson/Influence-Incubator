@@ -109,7 +109,7 @@ export default function SubscriptionPanel() {
                 <div className="flex-1">
                     <div className="font-serif text-xl md:text-2xl tracking-[-0.01em]">You're on the Free plan</div>
                     <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                        Steps 1 & 2 are free forever. Unlock Steps 3–7, unlimited plans, full PDF + Word exports, and Pro AI — from $19/mo or $97 lifetime.
+                        Steps 1 & 2 are free forever. Unlock Steps 3–7, full PDF + Word exports, and Pro AI — from $19/mo, $97 lifetime, or $397 for Lifetime Unlimited (unlimited plans).
                     </p>
                 </div>
                 <Link to="/pricing">
@@ -122,8 +122,16 @@ export default function SubscriptionPanel() {
     }
 
     // Pro user panel
-    const isLifetime = data.subscription_status === "pro_lifetime";
+    const status = data.subscription_status;
+    const isUnlimited = status === "pro_lifetime_unlimited";
+    const isLifetime = status === "pro_lifetime" || isUnlimited;
     const refundDays = daysFromSeconds(data.refund_window_seconds_remaining);
+
+    const tierLabel = isUnlimited
+        ? "Lifetime Unlimited Pro"
+        : status === "pro_lifetime"
+            ? "Lifetime Pro"
+            : "Monthly Pro";
 
     return (
         <div className="editorial-card p-6 md:p-7 mb-10" data-testid="subscription-panel">
@@ -134,7 +142,7 @@ export default function SubscriptionPanel() {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <div className="font-serif text-xl md:text-2xl tracking-[-0.01em]">
-                            {isLifetime ? "Lifetime Pro" : "Monthly Pro"}
+                            {tierLabel}
                         </div>
                         <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.16em] bg-brand-gold/15 text-brand-gold px-2 py-1 rounded-full">
                             <BadgeCheck className="h-3 w-3" /> Active
@@ -142,7 +150,7 @@ export default function SubscriptionPanel() {
                     </div>
                     <div className="mt-1.5 text-sm text-muted-foreground flex flex-wrap gap-x-5 gap-y-1">
                         {isLifetime ? (
-                            <span>Forever access — every step unlocked.</span>
+                            <span>{isUnlimited ? "Forever access — every step unlocked, unlimited plans." : "Forever access — every step unlocked."}</span>
                         ) : (
                             <>
                                 {data.pro_until && (
@@ -210,6 +218,18 @@ export default function SubscriptionPanel() {
                     )}
                 </div>
             </div>
+            {!isUnlimited && (
+                <div className="mt-5 pt-5 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3" data-testid="upgrade-to-unlimited-row">
+                    <div className="text-sm text-muted-foreground">
+                        <span className="text-foreground font-medium">Want unlimited plans?</span> Upgrade to Lifetime Unlimited for a single $397 payment — no caps, ever.
+                    </div>
+                    <Link to="/pricing" className="flex-shrink-0">
+                        <Button size="sm" variant="outline" className="border-brand-gold/40 text-brand-bronze hover:bg-brand-gold/10" data-testid="upgrade-to-unlimited-button">
+                            <Sparkles className="h-3.5 w-3.5 mr-1.5" /> See Unlimited
+                        </Button>
+                    </Link>
+                </div>
+            )}
         </div>
     );
 }
