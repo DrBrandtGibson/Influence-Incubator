@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Lock, Check, Sparkles, ArrowRight, Quote } from "lucide-react";
+import { Lock, Check, Sparkles, ArrowRight, Quote, Infinity as InfinityIcon } from "lucide-react";
 import { STEPS } from "@/lib/steps";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -155,16 +155,24 @@ export default function Landing() {
                     <div className="label-eyebrow mb-4 text-brand-gold">Pricing</div>
                     <h2 className="font-serif text-4xl md:text-5xl tracking-[-0.02em]">Simple. Honest. 7-day money-back.</h2>
                     <p className="mt-5 text-brand-cream/80">Steps 1 & 2 are free forever — no credit card. When you’re ready to go deep, choose the path that fits.</p>
-                    <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-7">
-                            <div className="text-xs text-brand-gold uppercase tracking-[0.18em]">Lifetime</div>
-                            <div className="mt-2 font-serif text-5xl">$97</div>
-                            <div className="text-xs text-brand-cream/60">one-time, all 7 steps forever</div>
-                        </div>
-                        <div className="rounded-2xl bg-white/5 border border-white/10 p-7">
+                    <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-7" data-testid="landing-pricing-monthly">
                             <div className="text-xs text-brand-gold uppercase tracking-[0.18em]">Monthly</div>
                             <div className="mt-2 font-serif text-5xl">$19<span className="text-base text-brand-cream/60">/mo</span></div>
-                            <div className="text-xs text-brand-cream/60">cancel anytime</div>
+                            <div className="text-xs text-brand-cream/60">1 plan · cancel anytime</div>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-7" data-testid="landing-pricing-lifetime">
+                            <div className="text-xs text-brand-gold uppercase tracking-[0.18em]">Lifetime</div>
+                            <div className="mt-2 font-serif text-5xl">$97</div>
+                            <div className="text-xs text-brand-cream/60">one-time · up to 6 plans</div>
+                        </div>
+                        <div className="relative rounded-2xl bg-white/5 border border-brand-gold/60 ring-1 ring-brand-gold/40 p-7" data-testid="landing-pricing-unlimited">
+                            <span className="absolute -top-2.5 left-6 text-[10px] uppercase tracking-[0.18em] bg-brand-gold text-brand-charcoal px-2.5 py-1 rounded-full">Best value</span>
+                            <div className="text-xs text-brand-gold uppercase tracking-[0.18em] inline-flex items-center gap-1.5">
+                                <InfinityIcon className="h-3.5 w-3.5" /> Lifetime Unlimited
+                            </div>
+                            <div className="mt-2 font-serif text-5xl">$397</div>
+                            <div className="text-xs text-brand-cream/60">one-time · unlimited plans</div>
                         </div>
                     </div>
                     <div className="mt-10">
@@ -181,9 +189,9 @@ export default function Landing() {
                     <Accordion type="single" collapsible className="divide-y" data-testid="faq-accordion">
                         {[
                             { q: "Is the free tier really free?", a: "Yes. Steps 1 & 2 are fully functional, free, forever. No credit card required." },
-                            { q: "What’s the difference between Lifetime and Monthly?", a: "Lifetime ($97) is a one-time payment for permanent Pro access. Monthly ($19) gives you the same access while subscribed; cancel anytime." },
+                            { q: "What’s the difference between Lifetime and Monthly?", a: "Three options. Monthly ($19/mo) unlocks all 7 steps while you’re subscribed and includes 1 active plan — cancel anytime. Lifetime ($97 one-time) is a permanent unlock with up to 6 plans. Lifetime Unlimited ($397 one-time) is permanent with unlimited plans — best for agencies, coaches, and anyone building multiple brands." },
                             { q: "What’s included in Pro?", a: "All 7 steps unlocked, unlimited plans, unlimited AI generations, clean PDF and Word exports, and plan version history." },
-                            { q: "Can I cancel or get a refund?", a: "Yes. 7-day money-back guarantee on both plans. Monthly cancels anytime in the billing portal." },
+                            { q: "Can I cancel or get a refund?", a: "Yes. 7-day money-back guarantee on every paid plan. Monthly can be canceled anytime from your dashboard." },
                             { q: "Whose framework is this?", a: "The Influence Incubator Formula was created by Dr. Brandt R. Gibson. This app turns the framework into an interactive, AI-assisted experience." }
                         ].map((f, i) => (
                             <AccordionItem key={i} value={`f${i}`} className="border-border" data-testid={`faq-item-${i}`}>
