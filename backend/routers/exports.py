@@ -543,37 +543,120 @@ def _render_step5(d: Dict[str, str], story, styles):
 
 
 def _render_step6(d: Dict[str, str], story, styles):
-    """Dream 100 summary + Book outline."""
+    """Dream 100 + Live Events list + Book outline."""
     try:
         d100 = json.loads(d.get("dream100_list") or "[]")
     except Exception:
         d100 = []
     if d100:
         story.append(_para(f"DREAM 100 — {len(d100)} entries", styles["label"]))
+
+    # Events
+    try:
+        event_ids = json.loads(d.get("events_ids") or "[]")
+    except Exception:
+        event_ids = []
+    if event_ids:
+        story.append(Spacer(1, 6))
+        story.append(_para(f"LIVE EVENTS & CHALLENGES — {len(event_ids)}", styles["label"]))
+        for i, eid in enumerate(event_ids):
+            tk = d.get(f"{eid}_type")
+            name = d.get(f"{eid}_name") or f"Event {i + 1}"
+            promise = d.get(f"{eid}_promise")
+            outcome = d.get(f"{eid}_outcome")
+            conv = d.get(f"{eid}_conversion")
+            head = name + (f" — <i>{tk}</i>" if tk else "")
+            story.append(_para(f"<b>{head}</b>", styles["sectionHeading"]))
+            if promise:
+                story.append(_para(f"<i>Promise:</i> {promise}", styles["body"]))
+            if outcome:
+                story.append(_para(f"<i>Outcome:</i> {outcome}", styles["body"]))
+            if conv:
+                story.append(_para(f"<i>Conversion path:</i> {conv}", styles["body"]))
+
     outline = _safe_json(d.get("book_outline_json"))
     if outline:
+        story.append(Spacer(1, 6))
         story.append(_para("BOOK", styles["label"]))
         story.append(_para(f"<b>{outline.get('title', '—')}</b> — <i>{outline.get('subtitle', '')}</i>", styles["body"]))
         chapters = outline.get("chapters") or []
         if chapters:
             story.append(_para(f"{len(chapters)} chapters outlined", styles["muted"]))
+            for ch in chapters[:30]:
+                story.append(_para(f"&nbsp;&nbsp;{ch.get('n', '')}. {ch.get('title', '')}", styles["body"]))
 
 
 def _render_step7(d: Dict[str, str], story, styles):
-    """Journey, Onboarding, Retention summaries."""
+    """DELIVER Exceptional Service Card — journey map + onboarding + S&D + quality + feedback."""
     journey = _safe_json(d.get("journey_json"))
-    if journey and journey.get("stages"):
-        story.append(_para(f"CUSTOMER JOURNEY — {len(journey['stages'])} stages mapped", styles["label"]))
+    stages = (journey or {}).get("stages") or []
+    if stages:
+        story.append(Spacer(1, 6))
+        story.append(_para("CUSTOMER JOURNEY MAP", styles["label"]))
+        for i, s in enumerate(stages):
+            story.append(_para(f"<b>{i + 1}. {s.get('name', 'Stage')}</b>", styles["sectionHeading"]))
+            if s.get("customer_does"):
+                story.append(_para(f"<i>Customer does:</i> {s['customer_does']}", styles["body"]))
+            if s.get("customer_feels"):
+                story.append(_para(f"<i>Customer feels:</i> {s['customer_feels']}", styles["body"]))
+            if s.get("we_do"):
+                story.append(_para(f"<i>We do:</i> {s['we_do']}", styles["body"]))
+            if s.get("risk"):
+                story.append(_para(f"<i>Risk:</i> {s['risk']}", styles["body"]))
+
     onb = _safe_json(d.get("onboarding_json"))
-    if onb and onb.get("sequence"):
-        story.append(_para(f"ONBOARDING SEQUENCE — {len(onb['sequence'])} touchpoints", styles["label"]))
+    seq = (onb or {}).get("sequence") or []
+    if seq:
+        story.append(Spacer(1, 6))
+        story.append(_para(f"ONBOARDING SEQUENCE — {len(seq)} TOUCHPOINTS", styles["label"]))
+        for i, s in enumerate(seq):
+            head = f"D{s.get('day')}" if s.get("day") else f"#{i + 1}"
+            title = s.get("title") or s.get("action") or ""
+            story.append(_para(f"<b>{head} · {title}</b>" + (f"  ({s['channel']})" if s.get("channel") else ""), styles["sectionHeading"]))
+            if s.get("detail"):
+                story.append(_para(s["detail"], styles["body"]))
+
     ret = _safe_json(d.get("retention_json"))
-    if ret and ret.get("plays"):
-        story.append(_para(f"SURPRISE & DELIGHT — {len(ret['plays'])} plays", styles["label"]))
-    sla = d.get("dq_response_sla")
-    if sla:
-        story.append(_para("RESPONSE SLA", styles["label"]))
-        story.append(_para(sla, styles["body"]))
+    plays = (ret or {}).get("plays") or []
+    if plays:
+        story.append(Spacer(1, 6))
+        story.append(_para(f"SURPRISE & DELIGHT PLAYBOOK — {len(plays)} PLAYS", styles["label"]))
+        for p in plays:
+            head = p.get("name") or p.get("trigger") or "Play"
+            story.append(_para(f"<b>{head}</b>", styles["sectionHeading"]))
+            if p.get("trigger"):
+                story.append(_para(f"<i>Trigger:</i> {p['trigger']}", styles["body"]))
+            if p.get("gesture"):
+                story.append(_para(f"<i>Gesture:</i> {p['gesture']}", styles["body"]))
+            if p.get("cost"):
+                story.append(_para(f"<i>Cost:</i> {p['cost']}", styles["body"]))
+
+    quality_keys = [("dq_response_sla", "Response SLA"), ("dq_quality_bar", "Quality bar"), ("dq_audit", "Audit/QA cadence"), ("dq_recovery", "Recovery protocol")]
+    quality_rows = [(label, d.get(k)) for k, label in quality_keys if d.get(k)]
+    if quality_rows:
+        story.append(Spacer(1, 6))
+        story.append(_para("QUALITY STANDARDS", styles["label"]))
+        for label, v in quality_rows:
+            story.append(_para(f"<b>{label}:</b> {v}", styles["body"]))
+
+    feedback_keys = [("df_nps_cadence", "NPS / Pulse cadence"), ("df_listening", "Listening surface"), ("df_close", "Close-the-loop"), ("df_signal", "Strongest signal to act on")]
+    feedback_rows = [(label, d.get(k)) for k, label in feedback_keys if d.get(k)]
+    if feedback_rows:
+        story.append(Spacer(1, 6))
+        story.append(_para("FEEDBACK LOOP", styles["label"]))
+        for label, v in feedback_rows:
+            story.append(_para(f"<b>{label}:</b> {v}", styles["body"]))
+
+    # AI-generated 10-step Do-This-Next list (if generated on Business Plan page)
+    todos_json = _safe_json(d.get("business_plan_todos_json"))
+    todos = (todos_json or {}).get("todos") or []
+    if todos:
+        story.append(Spacer(1, 8))
+        story.append(_para("DO THIS NEXT — AI-PRIORITIZED 10-STEP LIST", styles["label"]))
+        for i, t in enumerate(todos[:10]):
+            story.append(_para(f"<b>{i + 1}. {t.get('title', '—')}</b>", styles["sectionHeading"]))
+            if t.get("rationale"):
+                story.append(_para(t["rationale"], styles["body"]))
 
 
 # =============================== DOCX ===============================
@@ -830,11 +913,96 @@ def _docx_render_step5(doc: Document, d: Dict[str, str]) -> None:
 
 
 def _docx_render_step6(doc: Document, d: Dict[str, str]) -> None:
+    """Step 6 — Live Events + Book outline."""
+    try:
+        event_ids = json.loads(d.get("events_ids") or "[]")
+    except Exception:
+        event_ids = []
+    if event_ids:
+        _docx_styled_run(doc.add_paragraph(), f"Live Events & Challenges ({len(event_ids)})", bold=True, size_pt=12, color=_BRONZE)
+        for i, eid in enumerate(event_ids):
+            tk = d.get(f"{eid}_type")
+            name = d.get(f"{eid}_name") or f"Event {i + 1}"
+            promise = d.get(f"{eid}_promise")
+            outcome = d.get(f"{eid}_outcome")
+            conv = d.get(f"{eid}_conversion")
+            p = doc.add_paragraph()
+            _docx_styled_run(p, name, bold=True, size_pt=11)
+            if tk:
+                _docx_styled_run(p, f"  ({tk})", italic=True)
+            for label, v in (("Promise", promise), ("Outcome", outcome), ("Conversion path", conv)):
+                if not v:
+                    continue
+                pp = doc.add_paragraph()
+                _docx_styled_run(pp, f"{label}: ", bold=True)
+                pp.add_run(v)
     outline = _safe_json(d.get("book_outline_json"))
-    if not outline or not outline.get("chapters"):
-        return
-    for ch in outline["chapters"]:
-        doc.add_paragraph(f"{ch.get('n', '')}. {ch.get('title', '')}")
+    if outline and outline.get("chapters"):
+        _docx_styled_run(doc.add_paragraph(), f"Book — {outline.get('title') or '—'}", bold=True, size_pt=12, color=_BRONZE)
+        for ch in outline["chapters"]:
+            doc.add_paragraph(f"{ch.get('n', '')}. {ch.get('title', '')}")
+
+
+def _docx_render_step7(doc: Document, d: Dict[str, str]) -> None:
+    """DELIVER Exceptional Service Card."""
+    journey = _safe_json(d.get("journey_json"))
+    stages = (journey or {}).get("stages") or []
+    if stages:
+        _docx_styled_run(doc.add_paragraph(), "Customer Journey Map", bold=True, size_pt=12, color=_BRONZE)
+        for i, s in enumerate(stages):
+            _docx_styled_run(doc.add_paragraph(), f"{i + 1}. {s.get('name', 'Stage')}", bold=True, size_pt=11)
+            for label, key in (("Customer does", "customer_does"), ("Customer feels", "customer_feels"), ("We do", "we_do"), ("Risk", "risk")):
+                v = s.get(key)
+                if v:
+                    pp = doc.add_paragraph()
+                    _docx_styled_run(pp, f"{label}: ", bold=True)
+                    pp.add_run(v)
+    onb = _safe_json(d.get("onboarding_json"))
+    seq = (onb or {}).get("sequence") or []
+    if seq:
+        _docx_styled_run(doc.add_paragraph(), f"Onboarding Sequence — {len(seq)} touchpoints", bold=True, size_pt=12, color=_BRONZE)
+        for i, s in enumerate(seq):
+            head = f"D{s.get('day')}" if s.get("day") else f"#{i + 1}"
+            _docx_styled_run(doc.add_paragraph(), f"{head}  ·  {s.get('title') or s.get('action') or ''}", bold=True, size_pt=11)
+            if s.get("detail"):
+                doc.add_paragraph(s["detail"])
+    ret = _safe_json(d.get("retention_json"))
+    plays = (ret or {}).get("plays") or []
+    if plays:
+        _docx_styled_run(doc.add_paragraph(), f"Surprise & Delight Playbook — {len(plays)} plays", bold=True, size_pt=12, color=_BRONZE)
+        for p in plays:
+            _docx_styled_run(doc.add_paragraph(), p.get("name") or p.get("trigger") or "Play", bold=True, size_pt=11)
+            for label, key in (("Trigger", "trigger"), ("Gesture", "gesture"), ("Cost", "cost")):
+                v = p.get(key)
+                if v:
+                    pp = doc.add_paragraph()
+                    _docx_styled_run(pp, f"{label}: ", bold=True)
+                    pp.add_run(v)
+    # Quality + Feedback
+    q_keys = [("dq_response_sla", "Response SLA"), ("dq_quality_bar", "Quality bar"), ("dq_audit", "Audit/QA cadence"), ("dq_recovery", "Recovery protocol")]
+    q_rows = [(label, d.get(k)) for k, label in q_keys if d.get(k)]
+    if q_rows:
+        _docx_styled_run(doc.add_paragraph(), "Quality Standards", bold=True, size_pt=12, color=_BRONZE)
+        for label, v in q_rows:
+            pp = doc.add_paragraph()
+            _docx_styled_run(pp, f"{label}: ", bold=True)
+            pp.add_run(v)
+    f_keys = [("df_nps_cadence", "NPS / Pulse cadence"), ("df_listening", "Listening surface"), ("df_close", "Close-the-loop"), ("df_signal", "Strongest signal to act on")]
+    f_rows = [(label, d.get(k)) for k, label in f_keys if d.get(k)]
+    if f_rows:
+        _docx_styled_run(doc.add_paragraph(), "Feedback Loop", bold=True, size_pt=12, color=_BRONZE)
+        for label, v in f_rows:
+            pp = doc.add_paragraph()
+            _docx_styled_run(pp, f"{label}: ", bold=True)
+            pp.add_run(v)
+    # AI to-do list
+    todos = (_safe_json(d.get("business_plan_todos_json")) or {}).get("todos") or []
+    if todos:
+        _docx_styled_run(doc.add_paragraph(), "Do This Next — AI-Prioritized 10-Step List", bold=True, size_pt=12, color=_BRONZE)
+        for i, t in enumerate(todos[:10]):
+            _docx_styled_run(doc.add_paragraph(), f"{i + 1}. {t.get('title', '—')}", bold=True, size_pt=11)
+            if t.get("rationale"):
+                doc.add_paragraph(t["rationale"])
 
 
 _DOCX_STEP_RENDERERS = {
@@ -843,6 +1011,7 @@ _DOCX_STEP_RENDERERS = {
     4: _docx_render_step4,
     5: _docx_render_step5,
     6: _docx_render_step6,
+    7: _docx_render_step7,
 }
 
 

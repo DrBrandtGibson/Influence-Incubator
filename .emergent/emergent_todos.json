@@ -1,50 +1,38 @@
 [
   {
-    "content": "Backend: add portrait generation endpoint (Nano Banana) + Supabase Storage upload",
+    "content": "Step 6: Expand Live Events with event types list",
     "status": "completed"
   },
   {
-    "content": "Step 2: AI Suggest Name + Generate Portrait buttons in DreamCard",
+    "content": "Step 6: Rename output card to 'EXPAND Your Influence Card'",
     "status": "completed"
   },
   {
-    "content": "Step 2: Render Maslow + 6 Needs on Dream Customer Card artwork",
+    "content": "Step 7: Add customer journey map + onboarding + surprise/delight + quality standards + feedback loop",
     "status": "completed"
   },
   {
-    "content": "Step 3: Hero's Journey Founder + Customer narrations (AI synthesize)",
+    "content": "Step 7: 'Finish my Plan' button -> Business Plan page",
     "status": "completed"
   },
   {
-    "content": "Step 3: HSO — AI offer stack suggester + smart price suggester",
+    "content": "Backend: AI to-do list endpoint (10 items based on full plan)",
     "status": "completed"
   },
   {
-    "content": "Step 3: Output card includes journeys + offers + stack + important stories + full Story Bank",
+    "content": "Business Plan page: route, layout with all 7 cards + AI to-do list + Print",
     "status": "completed"
   },
   {
-    "content": "Step 4: Marketing Plan Generate-All button (8 fields x 2 tracks)",
+    "content": "Dashboard: permanent link to Business Plan for completed plans",
     "status": "completed"
   },
   {
-    "content": "Step 4: 30/60/90 Calendar Generate-All button (16 cells)",
+    "content": "Exports: include new Step 6/7 fields + Business Plan summary in PDF/DOCX",
     "status": "completed"
   },
   {
-    "content": "Step 4: Palette HEX codes + Typography 3-level (headline/subheadline/body)",
-    "status": "completed"
-  },
-  {
-    "content": "Step 4: Output card — full channel cards + website pages + marketing + calendar",
-    "status": "completed"
-  },
-  {
-    "content": "Exports: update PDF + DOCX with all new Step 2/3/4 fields",
-    "status": "completed"
-  },
-  {
-    "content": "E2E test Phase A (Steps 2/3/4)",
+    "content": "E2E test Phase B",
     "status": "completed"
   }
 ]

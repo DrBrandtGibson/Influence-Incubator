@@ -274,6 +274,16 @@ export default function Dashboard() {
                                         <span className="text-brand-bronze group-hover:text-brand-gold">Open →</span>
                                     </div>
                                 </div>
+                                {(p.current_step || 1) >= 7 && (
+                                    <Link
+                                        to={`/plans/${p.id}/business-plan`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand-bronze hover:text-brand-gold"
+                                        data-testid={`view-business-plan-${p.id}`}
+                                    >
+                                        <Layers className="h-3.5 w-3.5" /> View Business Plan →
+                                    </Link>
+                                )}
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <button

@@ -16,6 +16,7 @@ import Dashboard from "@/pages/Dashboard";
 import PlanWizard from "@/pages/PlanWizard";
 import Pricing from "@/pages/Pricing";
 import PlanWorkspace from "@/pages/PlanWorkspace";
+import BusinessPlan from "@/pages/BusinessPlan";
 
 function RouteScroll() {
     useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -40,6 +41,7 @@ export default function App() {
                             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                                 <Route path="/dashboard" element={<Dashboard />} />
                                 <Route path="/plans/new" element={<PlanWizard />} />
+                                <Route path="/plans/:planId/business-plan" element={<BusinessPlan />} />
                                 <Route path="/plans/:planId/:stepKey" element={<PlanWorkspace />} />
                                 <Route path="/plans/:planId" element={<RedirectToFirst />} />
                             </Route>

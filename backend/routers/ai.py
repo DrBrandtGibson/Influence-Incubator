@@ -351,3 +351,48 @@ async def generate_portrait(body: PortraitIn, user: CurrentUser = Depends(requir
         logger.warning("Persist dc_photo failed: %s", e)
 
     return {"url": public_url, "path": object_path}
+
+
+
+# ============================== AI TO-DO LIST (Business Plan) ==============================
+class TodoIn(BaseModel):
+    plan_id: str
+
+
+@router.post("/business-plan-todos")
+async def business_plan_todos(body: TodoIn, user: CurrentUser = Depends(require_user)):
+    """Generate a 10-item, prioritized to-do list based on the user's full plan context.
+
+    Returns JSON: {"todos": [{"title": "...", "rationale": "...", "step": <int 1-7>}, ...]}.
+    Requires Pro (because it relies on all 7 steps of context).
+    """
+    await _ensure_step_access(user, 7)
+    plan_context = await _build_plan_context(user, body.plan_id)
+    instructions = (
+        "Based on the user's FULL business plan context, output the 10 most important things they should DO NEXT, "
+        "in priority order (1 = most urgent). Be concrete and action-oriented (not philosophical). "
+        "Each item should be doable within 1–2 weeks if focused. "
+        "Return ONLY a JSON object: {\"todos\": [{\"title\": \"<7-12 words, imperative\", \"rationale\": \"<1 sentence, max 25 words, why this is urgent\", \"step\": <int 1-7 matching the step this addresses>}, ...10 items]}. "
+        "No markdown, no preamble — just JSON starting with { and ending with }."
+    )
+    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"todo-{user.id}-{body.plan_id}", system_message=_system_for("synthesize")).with_model(*MODEL)
+    text = await chat.send_message(UserMessage(text=instructions + "\n\nCONTEXT:\n" + plan_context))
+    # Strip code fences if any
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        # remove fenced wrapper
+        lines = cleaned.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+    # Persist on the plan so it survives reload
+    try:
+        admin.table("plan_inputs").upsert(
+            {"plan_id": body.plan_id, "step_num": 7, "field_key": "business_plan_todos_json", "value": cleaned},
+            on_conflict="plan_id,step_num,field_key",
+        ).execute()
+    except Exception as e:
+        logger.warning("Persist todos failed: %s", e)
+    return {"text": cleaned}

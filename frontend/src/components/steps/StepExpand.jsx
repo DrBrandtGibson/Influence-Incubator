@@ -577,7 +577,7 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     }
 
     return (
-        <Section eyebrow="Your Output" title="EXPAND Card" helper="Edit anything by jumping back to the relevant tab.">
+        <Section eyebrow="Your Output" title="EXPAND Your Influence Card" helper="Edit anything by jumping back to the relevant tab.">
             <div className="editorial-card p-7 md:p-8" data-testid="step6-output-card">
                 {/* Dream 100 */}
                 <div className="py-3">

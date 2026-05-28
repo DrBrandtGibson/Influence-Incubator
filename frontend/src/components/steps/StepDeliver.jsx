@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -391,8 +392,9 @@ function Feedback({ planId, getInput, setInput }) {
 }
 
 // =================== OUTPUT ===================
-function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
+function OutputCard({ planId, plan, getInput, markStepStatus, gotoStep }) {
     const [marking, setMarking] = useState(false);
+    const navigate = useNavigate();
 
     const journey = safeParseJSON(getInput(STEP_NUM, "journey_json"));
     const stages = journey?.stages || [];
@@ -400,48 +402,132 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const seq = onboarding?.sequence || [];
     const retention = safeParseJSON(getInput(STEP_NUM, "retention_json"));
     const plays = retention?.plays || [];
-    const responseSla = getInput(STEP_NUM, "dq_response_sla");
-    const nps = getInput(STEP_NUM, "df_nps_cadence");
 
-    async function complete() {
+    const qualityFields = DELIVER_QUALITY_PROMPTS.map((p) => ({ label: p.label, value: getInput(STEP_NUM, p.key) || "" })).filter((q) => q.value);
+    const feedbackFields = DELIVER_FEEDBACK_PROMPTS.map((p) => ({ label: p.label, value: getInput(STEP_NUM, p.key) || "" })).filter((q) => q.value);
+
+    async function finishPlan() {
         setMarking(true);
         try {
             await markStepStatus(STEP_NUM, "complete");
-            toast.success("Step 7 marked complete. The Formula is yours.");
+            toast.success("The Formula is yours. Opening your Business Plan…");
+            // Navigate to the new Business Plan summary page
+            const pid = plan?.id || planId;
+            navigate(`/plans/${pid}/business-plan`);
         } finally { setMarking(false); }
     }
 
     return (
-        <Section eyebrow="Your Output" title="DELIVER Card" helper="The final card. Edit anything by jumping back. When you're satisfied, mark the step complete to finish your 7-Step plan.">
+        <Section eyebrow="Your Output" title="DELIVER Exceptional Service Card" helper="The final card. Edit anything by jumping back. When you're satisfied, finish your plan to open the full Business Plan summary.">
             <div className="editorial-card p-7 md:p-8" data-testid="step7-output-card">
-                <Stat label="Journey stages mapped" value={`${stages.length}`} testId="output-journey-count" />
-                <Stat label="Onboarding touchpoints" value={`${seq.length}`} testId="output-onboarding-count" />
-                <Stat label="Surprise & delight plays" value={`${plays.length}`} testId="output-retention-count" />
+                {/* Customer Journey Map */}
+                <div className="py-3">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Customer Journey Map</div>
+                    {stages.length > 0 ? (
+                        <div className="overflow-x-auto" data-testid="output-journey-table">
+                            <table className="min-w-full text-sm bg-secondary/30 rounded-xl overflow-hidden">
+                                <thead className="bg-brand-charcoal text-brand-cream">
+                                    <tr className="text-left text-[11px] uppercase tracking-wider">
+                                        <th className="py-2 px-3">Stage</th>
+                                        <th className="py-2 px-3">Customer does</th>
+                                        <th className="py-2 px-3">Customer feels</th>
+                                        <th className="py-2 px-3">We do</th>
+                                        <th className="py-2 px-3">Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stages.map((s, i) => (
+                                        <tr key={i} className="border-t border-border/40 align-top">
+                                            <td className="py-2.5 px-3 font-serif text-base">{i + 1}. {s.name}</td>
+                                            <td className="py-2.5 px-3">{s.customer_does}</td>
+                                            <td className="py-2.5 px-3 italic">{s.customer_feels}</td>
+                                            <td className="py-2.5 px-3">{s.we_do}</td>
+                                            <td className="py-2.5 px-3 text-destructive">{s.risk}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground italic">Map your journey on the Customer Journey tab to populate this.</p>}
+                </div>
 
-                {responseSla && (
-                    <div className="py-3 border-t border-border/50">
-                        <div className="label-eyebrow text-brand-bronze mb-1">Response SLA</div>
-                        <div className="text-sm whitespace-pre-wrap">{responseSla}</div>
-                    </div>
-                )}
-                {nps && (
-                    <div className="py-3 border-t border-border/50">
-                        <div className="label-eyebrow text-brand-bronze mb-1">NPS / Pulse Cadence</div>
-                        <div className="text-sm whitespace-pre-wrap">{nps}</div>
-                    </div>
-                )}
+                {/* Onboarding Sequence */}
+                <div className="py-3 border-t border-border/50">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Onboarding Sequence — Full Steps</div>
+                    {seq.length > 0 ? (
+                        <div className="space-y-2" data-testid="output-onboarding-list">
+                            {seq.map((s, i) => (
+                                <div key={i} className="rounded-xl bg-secondary/30 p-3 flex gap-3" data-testid={`output-onboarding-${i}`}>
+                                    <div className="font-serif text-2xl text-brand-bronze w-14 shrink-0">{s.day ? `D${s.day}` : `#${i + 1}`}</div>
+                                    <div className="flex-1">
+                                        <div className="font-serif text-base">{s.title || s.action || "Touchpoint"}</div>
+                                        {s.detail && <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-line">{s.detail}</p>}
+                                        {s.channel && <div className="text-[10px] uppercase tracking-wider text-brand-bronze mt-1.5">{s.channel}</div>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground italic">Design your onboarding on the Onboarding tab to populate this.</p>}
+                </div>
+
+                {/* Surprise & Delight Playbook */}
+                <div className="py-3 border-t border-border/50">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Surprise & Delight Playbook</div>
+                    {plays.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="output-retention-list">
+                            {plays.map((p, i) => (
+                                <div key={i} className="rounded-xl bg-secondary/30 p-4" data-testid={`output-play-${i}`}>
+                                    <div className="font-serif text-base mb-1">{p.name || p.trigger || `Play ${i + 1}`}</div>
+                                    {p.trigger && <div className="text-[10px] uppercase tracking-wider text-brand-bronze">Trigger: {p.trigger}</div>}
+                                    {p.gesture && <p className="text-sm mt-1.5 leading-relaxed">{p.gesture}</p>}
+                                    {p.cost && <p className="text-xs text-muted-foreground mt-1.5">Cost: {p.cost}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground italic">Build your playbook on the Surprise & Delight tab.</p>}
+                </div>
+
+                {/* Quality Standards */}
+                <div className="py-3 border-t border-border/50">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Quality Standards</div>
+                    {qualityFields.length > 0 ? (
+                        <div className="space-y-3" data-testid="output-quality">
+                            {qualityFields.map((q) => (
+                                <div key={q.label}>
+                                    <div className="text-[10px] uppercase tracking-wider text-brand-bronze">{q.label}</div>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed">{q.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground italic">Set your standards on the Quality Standards tab.</p>}
+                </div>
+
+                {/* Feedback Loop */}
+                <div className="py-3 border-t border-border/50">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Feedback Loop</div>
+                    {feedbackFields.length > 0 ? (
+                        <div className="space-y-3" data-testid="output-feedback">
+                            {feedbackFields.map((q) => (
+                                <div key={q.label}>
+                                    <div className="text-[10px] uppercase tracking-wider text-brand-bronze">{q.label}</div>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed">{q.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <p className="text-sm text-muted-foreground italic">Close your loop on the Feedback Loop tab.</p>}
+                </div>
             </div>
 
             <div className="mt-6 flex justify-end">
-                <Button onClick={complete} disabled={marking} className="cta-red rounded-full h-11 px-6" data-testid="complete-step7-button">
-                    {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-2" /> Complete Step 7 — Finish my Plan <ArrowRight className="h-4 w-4 ml-2" /></>}
+                <Button onClick={finishPlan} disabled={marking} className="cta-red rounded-full h-11 px-6" data-testid="complete-step7-button">
+                    {marking ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-2" /> Finish my Plan → Open Business Plan <ArrowRight className="h-4 w-4 ml-2" /></>}
                 </Button>
             </div>
         </Section>
     );
 }
 
-function Stat({ label, value, testId }) {
+function Stat({ label, value, testId }) {  // kept for compatibility with other components
     return (
         <div className="py-3 border-t border-border/50 first:border-t-0 flex items-baseline justify-between" data-testid={testId}>
             <div className="label-eyebrow text-brand-bronze">{label}</div>
@@ -449,6 +535,8 @@ function Stat({ label, value, testId }) {
         </div>
     );
 }
+// eslint-disable-next-line no-unused-vars
+const _Stat = Stat;
 
 // Helper: streaming generate
 async function streamingGenerate({ field_key, field_label, instructions, planId, stepNum, mode = "generate", extra_context, onText, persist: shouldPersist = true }) {

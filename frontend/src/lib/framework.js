@@ -657,11 +657,19 @@ export const DREAM_100_STATUSES = [
 
 // ---- Live Events & Challenges ----
 export const EVENT_TYPES = [
-    { key: "webinar",   name: "Webinar",        helper: "60–90 min teaching → soft offer. Highest-leverage starter event." },
-    { key: "challenge", name: "Multi-day Challenge", helper: "5- or 10-day sprint with daily lessons + a community room. Highest conversion to continuity." },
-    { key: "workshop",  name: "Workshop",       helper: "2–4 hour deep teach. Live or in-person. Premium pricing." },
-    { key: "summit",    name: "Summit",         helper: "20+ expert interviews. Best for list-building." },
-    { key: "retreat",   name: "Retreat",        helper: "Multi-day, in-person, premium. The relationship multiplier." }
+    { key: "webinar",          name: "Webinar",                       helper: "60–90 min teaching → soft offer. Highest-leverage starter event." },
+    { key: "challenge_free_3", name: "FREE Challenge · 3-day",        helper: "Short, high-energy free sprint. Builds list + warms to a low-ticket offer." },
+    { key: "challenge_free_5", name: "FREE Challenge · 5-day",        helper: "Classic free 5-day challenge. Best balance of trust + completion rate." },
+    { key: "challenge_paid_3", name: "PAID Challenge · 3-day",        helper: "Low-ticket paid sprint (e.g. $27–$97). Filters for action-takers." },
+    { key: "challenge_paid_5", name: "PAID Challenge · 5-day",        helper: "Premium 5-day paid sprint with deeper teach + accountability." },
+    { key: "challenge_paid_7", name: "PAID Challenge · 7-day",        helper: "Week-long paid sprint with structured daily deliverables." },
+    { key: "challenge_paid_30",name: "PAID Challenge · 30-day",       helper: "Month-long paid program. Sits between challenge and short course." },
+    { key: "summit",           name: "Summit",                        helper: "20+ expert interviews. Best for list-building + co-marketing." },
+    { key: "workshop",         name: "Workshop",                      helper: "2–4 hour deep teach. Live or in-person. Premium pricing." },
+    { key: "mastermind",       name: "Mastermind",                    helper: "High-ticket peer group (6–12 mo). Recurring revenue + deep transformation." },
+    { key: "retreat",          name: "Retreat",                       helper: "Multi-day, in-person, premium. The relationship multiplier." },
+    { key: "conference_3",     name: "Conference · 3-day",            helper: "Mid-scale 3-day event. Speakers, sponsors, programming." },
+    { key: "conference_4",     name: "Conference · 4-day",            helper: "Multi-track 4-day event. Premium ticket + sponsorships + media." }
 ];
 
 export const EVENT_FIELDS = [
