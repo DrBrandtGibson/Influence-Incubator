@@ -77,14 +77,14 @@ LABELS: Dict[int, List[tuple]] = {
         ("structure_chosen", "Business Structure"),
     ],
     2: [
-        ("avatar_name", "Avatar Name"),
-        ("avatar_age", "Avatar Age"),
-        ("avatar_occupation", "Avatar Occupation"),
-        ("avatar_pain", "Avatar Pain"),
-        ("avatar_desire", "Avatar Desire"),
+        ("dc_name", "Dream Customer"),
+        ("niche_type", "Niche Type"),
+        ("micro_niche_statement", "Micro-Niche Statement"),
     ],
     3: [
         ("brand_voice_statement", "Brand Voice"),
+        ("hero_journey_founder_narration", "Founder's Journey · AI Narration"),
+        ("hero_journey_customer_narration", "Customer's Journey · AI Narration"),
     ],
     5: [
         ("cp_name", "Continuity Program"),
@@ -92,6 +92,85 @@ LABELS: Dict[int, List[tuple]] = {
         ("cp_what_monthly", "Continuity — Monthly Value"),
     ],
 }
+
+# ----------------------- Framework constants (mirror frontend/lib/framework.js) -----------------------
+# Kept in sync with framework.js to render full Step 2/3/4 details in exports.
+_MASLOW_LABELS = {
+    "physiological": "Physiological",
+    "safety": "Safety",
+    "love_belonging": "Love & Belonging",
+    "esteem": "Esteem",
+    "self_actualization": "Self-Actualization",
+    "transcendence": "Transcendence",
+}
+_NEED_LABELS = {
+    "certainty": "Certainty",
+    "variety": "Variety",
+    "significance": "Significance",
+    "love_connection": "Love / Connection",
+    "growth": "Growth",
+    "contribution": "Contribution",
+}
+_DEMO_Q = [
+    ("age", "Age range"),
+    ("gender", "Gender / identity"),
+    ("location", "Location"),
+    ("income", "Income / wealth"),
+    ("education", "Education"),
+    ("occupation", "Occupation"),
+    ("family", "Family situation"),
+    ("lifestyle", "Lifestyle markers"),
+]
+_PSYCHO_Q = [
+    ("values", "Core values"),
+    ("beliefs", "Beliefs"),
+    ("aspirations", "Aspirations"),
+    ("fears", "Fears"),
+    ("daily_habits", "Daily habits"),
+    ("influences", "Influences"),
+    ("frustrations", "Frustrations"),
+    ("vocabulary", "Vocabulary / how they talk"),
+]
+_STORY_BANK_CATEGORIES = [
+    ("origin", "Origin"),
+    ("rupture", "Rupture / Wake-up"),
+    ("mentor", "Mentor"),
+    ("transformation", "Transformation"),
+    ("failure", "Failure"),
+    ("resurrection", "Resurrection"),
+    ("calling", "Calling"),
+    ("teacher", "Teaching Moment"),
+    ("future", "Future Vision"),
+]
+_POCKET_MEDIA_CHANNELS = [
+    ("newsletter", "Newsletter"),
+    ("blog", "Blog"),
+    ("podcast", "Podcast"),
+    ("video", "Video"),
+    ("events", "Events"),
+]
+_POCKET_MEDIA_FIELDS = [
+    ("name", "Working Name"),
+    ("url", "URL"),
+    ("format", "Format"),
+    ("cadence", "Cadence"),
+    ("audience_pull", "Audience Pull"),
+    ("kpi", "KPI"),
+    ("first_5_ideas", "First 5 Ideas"),
+]
+_WEBSITE_PAGES = {
+    "influencer": [("home", "Home"), ("about", "About / Story"), ("work_with", "Work With Me"), ("podcast_or_blog", "Podcast / Blog"), ("free_resource", "Free Resource"), ("speak", "Speaking"), ("contact", "Contact")],
+    "medical":    [("home", "Home"), ("about", "About Provider"), ("services", "Services"), ("patient_resources", "Patient Resources"), ("team", "Team"), ("locations", "Locations & Hours"), ("book_appt", "Book Appointment"), ("contact", "Contact")],
+}
+_MARKETING_TRACKS = [("diy", "DIY Track"), ("ai10x", "10X-with-AI Track")]
+_MARKETING_FIELDS = [
+    ("weekly_schedule", "Weekly Schedule"),
+    ("tools", "Tools / Stack"),
+    ("time_investment", "Time Investment"),
+    ("expected_outcome", "Expected Outcome"),
+]
+_CAL_PHASES = [("d30", "Days 0–30"), ("d60", "Days 31–60"), ("d90", "Days 61–90"), ("beyond", "Beyond 90")]
+_CAL_PILLARS = [("content", "Content"), ("engagement", "Engagement"), ("growth", "Growth"), ("offer", "Offer")]
 
 
 def _watermark(canvas, doc):
@@ -175,6 +254,7 @@ def _pdf_labeled_fields(step_num: int, step_data: dict, styles, story: list) -> 
 
 # Dispatch table for step-specific structured renderings.
 _PDF_STEP_RENDERERS = {
+    2: lambda d, s, st: _render_step2(d, s, st),
     3: lambda d, s, st: _render_step3(d, s, st),
     4: lambda d, s, st: _render_step4(d, s, st),
     5: lambda d, s, st: _render_step5(d, s, st),
@@ -228,36 +308,120 @@ def _build_pdf(plan: dict, inputs: List[dict], is_pro: bool) -> bytes:
     return buf.getvalue()
 
 
+def _render_step2(d: Dict[str, str], story, styles):
+    """Dream Customer details: demographics + psychographics + Maslow + 6 Needs."""
+    # Demographics
+    demo_rows = [(label, d.get(f"demo_{k}")) for k, label in _DEMO_Q if d.get(f"demo_{k}")]
+    if demo_rows:
+        story.append(Spacer(1, 8))
+        story.append(_para("DEMOGRAPHICS", styles["label"]))
+        for label, v in demo_rows:
+            story.append(_para(f"<b>{label}:</b> {v}", styles["body"]))
+    # Psychographics
+    psycho_rows = [(label, d.get(f"psycho_{k}")) for k, label in _PSYCHO_Q if d.get(f"psycho_{k}")]
+    if psycho_rows:
+        story.append(Spacer(1, 6))
+        story.append(_para("PSYCHOGRAPHICS", styles["label"]))
+        for label, v in psycho_rows:
+            story.append(_para(f"<b>{label}:</b> {v}", styles["body"]))
+    # Maslow's
+    try:
+        ml = json.loads(d.get("maslow_levels") or "[]")
+    except Exception:
+        ml = []
+    ml_labels = [_MASLOW_LABELS.get(k, k) for k in ml if k]
+    if ml_labels:
+        story.append(Spacer(1, 6))
+        story.append(_para("MASLOW'S HIERARCHY (selected)", styles["label"]))
+        story.append(_para(" · ".join(ml_labels), styles["body"]))
+    # 6 Core Needs
+    try:
+        nd = json.loads(d.get("robbins_needs") or "[]")
+    except Exception:
+        nd = []
+    nd_labels = [_NEED_LABELS.get(k, k) for k in nd if k]
+    if nd_labels:
+        story.append(Spacer(1, 6))
+        story.append(_para("6 CORE HUMAN NEEDS (selected)", styles["label"]))
+        story.append(_para(" · ".join(nd_labels), styles["body"]))
+
+
 def _render_step3(d: Dict[str, str], story, styles):
-    """Offers list (HSO + Important Stories)."""
+    """Frame Your Story: journey narrations + offers (HSO + Important Stories) + Story Bank."""
+    # Founder & Customer Journey narrations
+    founder_nar = d.get("hero_journey_founder_narration")
+    customer_nar = d.get("hero_journey_customer_narration")
+    if founder_nar:
+        story.append(Spacer(1, 8))
+        story.append(_para("FOUNDER'S JOURNEY · AI SYNTHESIS", styles["label"]))
+        story.append(_para(founder_nar, styles["body"]))
+    if customer_nar:
+        story.append(Spacer(1, 4))
+        story.append(_para("CUSTOMER'S JOURNEY · AI SYNTHESIS", styles["label"]))
+        story.append(_para(customer_nar, styles["body"]))
+
+    # Offers
     try:
         offer_ids = json.loads(d.get("offer_ids") or "[]")
     except Exception:
         offer_ids = []
-    if not offer_ids:
-        return
-    story.append(Spacer(1, 8))
-    story.append(_para("OFFERS", styles["label"]))
-    for i, oid in enumerate(offer_ids):
-        name = d.get(f"{oid}_name") or f"Offer {i + 1}"
-        price = d.get(f"{oid}_price") or ""
-        hook = d.get(f"{oid}_hook")
-        stry = d.get(f"{oid}_story")
-        promise = d.get(f"{oid}_promise")
-        elevator = d.get(f"{oid}_elevator")
-        story.append(_para(f"<b>{name}</b>" + (f" — <font color='#8B6F2A'>{price}</font>" if price else ""), styles["sectionHeading"]))
-        if hook:
-            story.append(_para(f"<i>Hook:</i> {hook}", styles["body"]))
-        if stry:
-            story.append(_para(f"<i>Story:</i> {stry}", styles["body"]))
-        if promise:
-            story.append(_para(f"<i>Promise:</i> {promise}", styles["body"]))
-        if elevator:
-            story.append(_para(f"<i>Elevator Pitch:</i> {elevator}", styles["body"]))
+    if offer_ids:
+        story.append(Spacer(1, 8))
+        story.append(_para("OFFERS", styles["label"]))
+        for i, oid in enumerate(offer_ids):
+            name = d.get(f"{oid}_name") or f"Offer {i + 1}"
+            price = d.get(f"{oid}_price") or ""
+            rationale = d.get(f"{oid}_price_rationale")
+            hook = d.get(f"{oid}_hook")
+            stry = d.get(f"{oid}_story")
+            promise = d.get(f"{oid}_promise")
+            elevator = d.get(f"{oid}_elevator")
+            story.append(_para(f"<b>{name}</b>" + (f" — <font color='#8B6F2A'>{price}</font>" if price else ""), styles["sectionHeading"]))
+            if rationale:
+                story.append(_para(f"<i>Pricing rationale:</i> {rationale}", styles["body"]))
+            # Stack
+            try:
+                stack = json.loads(d.get(f"{oid}_stack") or "[]")
+            except Exception:
+                stack = []
+            stack = [r for r in stack if isinstance(r, dict) and (r.get("item") or r.get("benefit") or r.get("value"))]
+            if stack:
+                story.append(_para("<i>Stack:</i>", styles["body"]))
+                for r in stack:
+                    parts = [f"<b>{r.get('item', '')}</b>"]
+                    if r.get("benefit"):
+                        parts.append(f"— {r['benefit']}")
+                    if r.get("value"):
+                        parts.append(f"· <font color='#8B6F2A'>{r['value']}</font>")
+                    story.append(_para("&nbsp;&nbsp;• " + " ".join(parts), styles["body"]))
+            if hook:
+                story.append(_para(f"<i>Hook:</i> {hook}", styles["body"]))
+            if stry:
+                story.append(_para(f"<i>Story:</i> {stry}", styles["body"]))
+            if promise:
+                story.append(_para(f"<i>Transformation Promise:</i> {promise}", styles["body"]))
+            if elevator:
+                story.append(_para(f"<i>Important Story — Elevator Pitch:</i> {elevator}", styles["body"]))
+
+    # Story Bank — 9 sections
+    sb_entries = []
+    for cat_key, cat_label in _STORY_BANK_CATEGORIES:
+        # Collect all keys starting with cat_key_ from d
+        cat_items = [(fk, v) for fk, v in d.items() if fk.startswith(f"{cat_key}_") and v]
+        if cat_items:
+            sb_entries.append((cat_label, cat_items))
+    if sb_entries:
+        story.append(Spacer(1, 10))
+        story.append(_para("STORY BANK · FULL ARCHIVE", styles["label"]))
+        for cat_label, items in sb_entries:
+            story.append(_para(f"<b>{cat_label}</b>", styles["sectionHeading"]))
+            for _, v in items:
+                story.append(_para(f"• {v}", styles["body"]))
 
 
 def _render_step4(d: Dict[str, str], story, styles):
-    """Archetype + palette + typography + channels."""
+    """IGNITE Your Brand Card: archetype + palette w/ HEX + 3-level typography +
+    full channel cards + drafted pages + marketing plan + 30/60/90 calendar."""
     primary = d.get("archetype_primary")
     secondary = d.get("archetype_secondary")
     if primary or secondary:
@@ -266,18 +430,92 @@ def _render_step4(d: Dict[str, str], story, styles):
         if secondary:
             s += f" · with {secondary}"
         story.append(_para(s, styles["body"]))
+
+    # Palette + HEX codes
+    palette_chosen = d.get("palette_chosen")
+    palette = None
+    try:
+        palettes = (json.loads(d.get("palettes_json") or "{}") or {}).get("palettes") or []
+        palette = next((p for p in palettes if p.get("name") == palette_chosen), None)
+    except Exception:
+        pass
+    if palette_chosen:
+        story.append(Spacer(1, 4))
+        story.append(_para("PALETTE", styles["label"]))
+        story.append(_para(f"<b>{palette_chosen}</b>" + (f" — <i>{palette.get('mood', '')}</i>" if palette and palette.get("mood") else ""), styles["body"]))
+        if palette and palette.get("colors"):
+            hex_str = "  ·  ".join([f"<font color='{c}'>■</font> <font face='Courier'>{c}</font>" for c in palette["colors"]])
+            story.append(_para(hex_str, styles["body"]))
+
+    # Typography (3 levels)
+    typo_chosen = d.get("typography_chosen")
+    typo = None
+    try:
+        pairings = (json.loads(d.get("typography_json") or "{}") or {}).get("pairings") or []
+        typo = next((p for p in pairings if p.get("name") == typo_chosen), None)
+    except Exception:
+        pass
+    if typo_chosen:
+        story.append(Spacer(1, 4))
+        story.append(_para("TYPOGRAPHY", styles["label"]))
+        story.append(_para(f"<b>{typo_chosen}</b>", styles["body"]))
+        if typo:
+            headline = typo.get("headline") or typo.get("heading") or "—"
+            subhead = typo.get("subheadline") or typo.get("heading") or headline
+            body = typo.get("body") or "—"
+            story.append(_para(f"Headline: <b>{headline}</b> · Subheadline: <b>{subhead}</b> · Body: <b>{body}</b>", styles["body"]))
+
+    # Pocket Media — full channel cards
+    enabled_channels = [(k, label) for k, label in _POCKET_MEDIA_CHANNELS if d.get(f"pm_{k}_enabled") == "yes"]
+    if enabled_channels:
+        story.append(Spacer(1, 8))
+        story.append(_para("POCKET MEDIA EMPIRE · CHANNELS IN THE MIX", styles["label"]))
+        for k, label in enabled_channels:
+            story.append(_para(f"<b>{label}</b>", styles["sectionHeading"]))
+            for fk, flabel in _POCKET_MEDIA_FIELDS:
+                v = d.get(f"pm_{k}_{fk}")
+                if v:
+                    story.append(_para(f"<i>{flabel}:</i> {v}", styles["body"]))
+
+    # Website — drafted pages
     site_tpl = d.get("site_template")
     if site_tpl:
-        story.append(_para("WEBSITE TEMPLATE", styles["label"]))
-        story.append(_para(site_tpl, styles["body"]))
-    palette_chosen = d.get("palette_chosen")
-    if palette_chosen:
-        story.append(_para("CHOSEN PALETTE", styles["label"]))
-        story.append(_para(palette_chosen, styles["body"]))
-    typo_chosen = d.get("typography_chosen")
-    if typo_chosen:
-        story.append(_para("CHOSEN TYPOGRAPHY", styles["label"]))
-        story.append(_para(typo_chosen, styles["body"]))
+        pages = _WEBSITE_PAGES.get(site_tpl, [])
+        drafted = [(pk, plabel, d.get(f"site_{site_tpl}_{pk}")) for pk, plabel in pages if d.get(f"site_{site_tpl}_{pk}")]
+        story.append(Spacer(1, 6))
+        story.append(_para(f"WEBSITE — {site_tpl.upper()} HUB", styles["label"]))
+        if drafted:
+            for _, plabel, v in drafted:
+                story.append(_para(f"<b>{plabel}</b>", styles["sectionHeading"]))
+                story.append(_para(v, styles["body"]))
+        else:
+            story.append(_para("(No pages drafted yet.)", styles["italic"]))
+
+    # Marketing Plan — both tracks
+    has_any_mt = any(d.get(f"mt_{tk}_{fk}") for tk, _ in _MARKETING_TRACKS for fk, _ in _MARKETING_FIELDS)
+    if has_any_mt:
+        story.append(Spacer(1, 6))
+        story.append(_para("MARKETING PLAN · BOTH TRACKS", styles["label"]))
+        for tk, tlabel in _MARKETING_TRACKS:
+            rows = [(flabel, d.get(f"mt_{tk}_{fk}")) for fk, flabel in _MARKETING_FIELDS if d.get(f"mt_{tk}_{fk}")]
+            if not rows:
+                continue
+            story.append(_para(f"<b>{tlabel}</b>", styles["sectionHeading"]))
+            for flabel, v in rows:
+                story.append(_para(f"<i>{flabel}:</i> {v}", styles["body"]))
+
+    # 30/60/90 + Beyond Calendar
+    has_any_cal = any(d.get(f"cal_{pk}_{phk}") for pk, _ in _CAL_PILLARS for phk, _ in _CAL_PHASES)
+    if has_any_cal:
+        story.append(Spacer(1, 6))
+        story.append(_para("30/60/90 + BEYOND CONTENT CALENDAR", styles["label"]))
+        for pk, plabel in _CAL_PILLARS:
+            cells = [(phlabel, d.get(f"cal_{pk}_{phk}")) for phk, phlabel in _CAL_PHASES if d.get(f"cal_{pk}_{phk}")]
+            if not cells:
+                continue
+            story.append(_para(f"<b>{plabel}</b>", styles["sectionHeading"]))
+            for phlabel, v in cells:
+                story.append(_para(f"<i>{phlabel}:</i> {v}", styles["body"]))
 
 
 def _render_step5(d: Dict[str, str], story, styles):
@@ -407,8 +645,43 @@ def _build_docx(plan: dict, inputs: List[dict]) -> bytes:
     return out.getvalue()
 
 
+def _docx_render_step2(doc: Document, d: Dict[str, str]) -> None:
+    """Dream Customer details for Word export."""
+    demo_rows = [(label, d.get(f"demo_{k}")) for k, label in _DEMO_Q if d.get(f"demo_{k}")]
+    if demo_rows:
+        _docx_styled_run(doc.add_paragraph(), "Demographics", bold=True, size_pt=11, color=_BRONZE)
+        for label, v in demo_rows:
+            p = doc.add_paragraph()
+            _docx_styled_run(p, f"{label}: ", bold=True)
+            p.add_run(v)
+    psycho_rows = [(label, d.get(f"psycho_{k}")) for k, label in _PSYCHO_Q if d.get(f"psycho_{k}")]
+    if psycho_rows:
+        _docx_styled_run(doc.add_paragraph(), "Psychographics", bold=True, size_pt=11, color=_BRONZE)
+        for label, v in psycho_rows:
+            p = doc.add_paragraph()
+            _docx_styled_run(p, f"{label}: ", bold=True)
+            p.add_run(v)
+    try:
+        ml = json.loads(d.get("maslow_levels") or "[]")
+    except Exception:
+        ml = []
+    ml_labels = [_MASLOW_LABELS.get(k, k) for k in ml if k]
+    if ml_labels:
+        _docx_styled_run(doc.add_paragraph(), "Maslow's Hierarchy (selected)", bold=True, size_pt=11, color=_BRONZE)
+        doc.add_paragraph(" · ".join(ml_labels))
+    try:
+        nd = json.loads(d.get("robbins_needs") or "[]")
+    except Exception:
+        nd = []
+    nd_labels = [_NEED_LABELS.get(k, k) for k in nd if k]
+    if nd_labels:
+        _docx_styled_run(doc.add_paragraph(), "6 Core Human Needs (selected)", bold=True, size_pt=11, color=_BRONZE)
+        doc.add_paragraph(" · ".join(nd_labels))
+
+
 def _docx_render_step3(doc: Document, d: Dict[str, str]) -> None:
-    """Step 3 — list of offers with their HSO bundle."""
+    """Step 3 — Journey narrations + offers HSO bundle + Story Bank."""
+    # Narrations are rendered via _docx_labeled_fields already (we added to LABELS).
     try:
         offer_ids = json.loads(d.get("offer_ids") or "[]")
     except Exception:
@@ -416,17 +689,136 @@ def _docx_render_step3(doc: Document, d: Dict[str, str]) -> None:
     for i, oid in enumerate(offer_ids):
         name = d.get(f"{oid}_name") or f"Offer {i + 1}"
         price = d.get(f"{oid}_price") or ""
+        rationale = d.get(f"{oid}_price_rationale")
         p = doc.add_paragraph()
         _docx_styled_run(p, name, bold=True, size_pt=13)
         if price:
             _docx_styled_run(p, f"  —  {price}", color=_BRONZE)
-        for key, label in (("hook", "Hook"), ("story", "Story"), ("promise", "Promise"), ("elevator", "Elevator Pitch")):
+        if rationale:
+            pr = doc.add_paragraph()
+            _docx_styled_run(pr, "Pricing rationale: ", bold=True)
+            pr.add_run(rationale)
+        # Stack
+        try:
+            stack = json.loads(d.get(f"{oid}_stack") or "[]")
+        except Exception:
+            stack = []
+        stack = [r for r in stack if isinstance(r, dict) and (r.get("item") or r.get("benefit") or r.get("value"))]
+        if stack:
+            _docx_styled_run(doc.add_paragraph(), "Stack:", bold=True)
+            for r in stack:
+                line = f"• {r.get('item', '')}"
+                if r.get("benefit"):
+                    line += f" — {r['benefit']}"
+                if r.get("value"):
+                    line += f" · {r['value']}"
+                doc.add_paragraph(line)
+        for key, label in (("hook", "Hook"), ("story", "Story"), ("promise", "Transformation Promise"), ("elevator", "Important Story — Elevator Pitch")):
             v = d.get(f"{oid}_{key}")
             if not v:
                 continue
             pp = doc.add_paragraph()
             _docx_styled_run(pp, f"{label}: ", bold=True)
             pp.add_run(v)
+
+    # Story Bank — 9 sections
+    for cat_key, cat_label in _STORY_BANK_CATEGORIES:
+        cat_items = [v for fk, v in d.items() if fk.startswith(f"{cat_key}_") and v]
+        if not cat_items:
+            continue
+        _docx_styled_run(doc.add_paragraph(), f"Story Bank · {cat_label}", bold=True, size_pt=11, color=_BRONZE)
+        for v in cat_items:
+            doc.add_paragraph(f"• {v}")
+
+
+def _docx_render_step4(doc: Document, d: Dict[str, str]) -> None:
+    """Full IGNITE Your Brand Card for Word export."""
+    primary = d.get("archetype_primary")
+    secondary = d.get("archetype_secondary")
+    if primary:
+        p = doc.add_paragraph()
+        _docx_styled_run(p, "Archetype: ", bold=True)
+        p.add_run(primary + (f" · with {secondary}" if secondary else ""))
+
+    # Palette
+    palette_chosen = d.get("palette_chosen")
+    if palette_chosen:
+        try:
+            palettes = (json.loads(d.get("palettes_json") or "{}") or {}).get("palettes") or []
+            palette = next((p for p in palettes if p.get("name") == palette_chosen), None)
+        except Exception:
+            palette = None
+        p = doc.add_paragraph()
+        _docx_styled_run(p, "Palette: ", bold=True)
+        p.add_run(palette_chosen)
+        if palette and palette.get("colors"):
+            doc.add_paragraph(" · ".join(palette["colors"]))
+
+    # Typography
+    typo_chosen = d.get("typography_chosen")
+    if typo_chosen:
+        try:
+            pairings = (json.loads(d.get("typography_json") or "{}") or {}).get("pairings") or []
+            typo = next((p for p in pairings if p.get("name") == typo_chosen), None)
+        except Exception:
+            typo = None
+        p = doc.add_paragraph()
+        _docx_styled_run(p, "Typography: ", bold=True)
+        p.add_run(typo_chosen)
+        if typo:
+            headline = typo.get("headline") or typo.get("heading") or "—"
+            subhead = typo.get("subheadline") or typo.get("heading") or headline
+            body = typo.get("body") or "—"
+            doc.add_paragraph(f"Headline: {headline} · Subheadline: {subhead} · Body: {body}")
+
+    # Pocket Media — channels
+    enabled = [(k, label) for k, label in _POCKET_MEDIA_CHANNELS if d.get(f"pm_{k}_enabled") == "yes"]
+    if enabled:
+        _docx_styled_run(doc.add_paragraph(), "Pocket Media Empire — Channels in the Mix", bold=True, size_pt=12, color=_BRONZE)
+        for k, label in enabled:
+            _docx_styled_run(doc.add_paragraph(), label, bold=True, size_pt=11)
+            for fk, flabel in _POCKET_MEDIA_FIELDS:
+                v = d.get(f"pm_{k}_{fk}")
+                if v:
+                    pp = doc.add_paragraph()
+                    _docx_styled_run(pp, f"{flabel}: ", bold=True)
+                    pp.add_run(v)
+
+    # Website pages
+    site_tpl = d.get("site_template")
+    if site_tpl:
+        pages = _WEBSITE_PAGES.get(site_tpl, [])
+        drafted = [(plabel, d.get(f"site_{site_tpl}_{pk}")) for pk, plabel in pages if d.get(f"site_{site_tpl}_{pk}")]
+        if drafted:
+            _docx_styled_run(doc.add_paragraph(), f"Website — {site_tpl} Hub", bold=True, size_pt=12, color=_BRONZE)
+            for plabel, v in drafted:
+                _docx_styled_run(doc.add_paragraph(), plabel, bold=True, size_pt=11)
+                doc.add_paragraph(v)
+
+    # Marketing Plan
+    for tk, tlabel in _MARKETING_TRACKS:
+        rows = [(flabel, d.get(f"mt_{tk}_{fk}")) for fk, flabel in _MARKETING_FIELDS if d.get(f"mt_{tk}_{fk}")]
+        if not rows:
+            continue
+        _docx_styled_run(doc.add_paragraph(), f"Marketing Plan — {tlabel}", bold=True, size_pt=12, color=_BRONZE)
+        for flabel, v in rows:
+            pp = doc.add_paragraph()
+            _docx_styled_run(pp, f"{flabel}: ", bold=True)
+            pp.add_run(v)
+
+    # 30/60/90 Calendar
+    any_cal = any(d.get(f"cal_{pk}_{phk}") for pk, _ in _CAL_PILLARS for phk, _ in _CAL_PHASES)
+    if any_cal:
+        _docx_styled_run(doc.add_paragraph(), "30/60/90 + Beyond Calendar", bold=True, size_pt=12, color=_BRONZE)
+        for pk, plabel in _CAL_PILLARS:
+            cells = [(phlabel, d.get(f"cal_{pk}_{phk}")) for phk, phlabel in _CAL_PHASES if d.get(f"cal_{pk}_{phk}")]
+            if not cells:
+                continue
+            _docx_styled_run(doc.add_paragraph(), plabel, bold=True, size_pt=11)
+            for phlabel, v in cells:
+                pp = doc.add_paragraph()
+                _docx_styled_run(pp, f"{phlabel}: ", bold=True)
+                pp.add_run(v)
 
 
 def _docx_render_step5(doc: Document, d: Dict[str, str]) -> None:
@@ -446,7 +838,9 @@ def _docx_render_step6(doc: Document, d: Dict[str, str]) -> None:
 
 
 _DOCX_STEP_RENDERERS = {
+    2: _docx_render_step2,
     3: _docx_render_step3,
+    4: _docx_render_step4,
     5: _docx_render_step5,
     6: _docx_render_step6,
 }

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
     Sparkles, Mic, BookOpen, Compass, Megaphone, Quote, Check, Loader2,
-    ArrowRight, ArrowLeft, ChevronRight, User as UserIcon, Users, Plus, Trash2
+    ArrowRight, ArrowLeft, ChevronRight, User as UserIcon, Users, Plus, Trash2, Wand2, DollarSign
 } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
 import { authedFetch } from "@/lib/supabase";
+import { streamAIText } from "@/lib/streamAI";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { STEPS } from "@/lib/steps";
@@ -240,8 +241,44 @@ function StoryBank({ planId, getInput, setInput }) {
 // =================== HERO'S JOURNEY — image-anchored with wedge highlights ===================
 function HeroJourney({ planId, getInput, setInput }) {
     const [persona, setPersona] = useState("founder");
+    const [synthesizing, setSynthesizing] = useState(false);
     const keyFor = (stage) => `${stage.key}__${persona}`;
     const filledCount = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, keyFor(s)) || "").trim().length > 0).length;
+    const narrationKey = `hero_journey_${persona}_narration`;
+    const narration = getInput(STEP_NUM, narrationKey) || "";
+
+    async function synthesizeNarration() {
+        if (synthesizing) return;
+        if (filledCount < 3) {
+            toast.message("Add a few stages first", { description: "Draft at least 3 stages before synthesizing the narration." });
+            return;
+        }
+        setSynthesizing(true);
+        try {
+            const stages = HEROS_JOURNEY_STAGES.map((s) => {
+                const v = (getInput(STEP_NUM, keyFor(s)) || "").trim();
+                return v ? `Stage ${s.stage} — ${s.label}: ${v}` : null;
+            }).filter(Boolean).join("\n");
+            const who = persona === "founder" ? "the founder's own journey" : "the dream customer's transformation journey";
+            const final = await streamAIText("/ai/synthesize", {
+                plan_id: planId,
+                step_num: STEP_NUM,
+                field_key: narrationKey,
+                field_label: `Hero's Journey narration — ${persona === "founder" ? "Founder" : "Customer"}`,
+                sub_module: `Hero's Journey · ${persona === "founder" ? "Founder" : "Customer"}`,
+                instructions: `Synthesize a 4-paragraph cinematic narration of ${who}, woven from the 12 hero's journey stages below. Use second person ("you") and present tense for the customer journey; use third or first person for the founder journey — pick whichever feels most authentic. Each paragraph should cover 3 stages. Premium editorial tone. No headings, no bullet points — just flowing prose. STAGES:\n${stages}`,
+            });
+            if (final) {
+                setInput(STEP_NUM, narrationKey, final);
+                authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: STEP_NUM, field_key: narrationKey, value: final }) });
+                toast.success(`${persona === "founder" ? "Founder" : "Customer"} narration synthesized.`);
+            }
+        } catch (e) {
+            toast.error(e.message || "Could not synthesize narration.");
+        } finally {
+            setSynthesizing(false);
+        }
+    }
 
     return (
         <Section eyebrow="Hero's Journey" title="12-Stages of Discovery" helper={FRAME_HEROS_JOURNEY_INTRO}>
@@ -257,7 +294,17 @@ function HeroJourney({ planId, getInput, setInput }) {
                     <Users className="h-4 w-4" /> Customer's Journey
                 </button>
                 <span className="text-xs text-muted-foreground self-center ml-2" data-testid="hj-progress">{filledCount} of 12 stages drafted</span>
+                <Button onClick={synthesizeNarration} disabled={synthesizing} size="sm" className="ml-auto rounded-full" variant="outline" data-testid={`hj-synthesize-${persona}-button`}>
+                    {synthesizing ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Synthesizing…</> : <><Sparkles className="h-3.5 w-3.5 mr-2" /> Synthesize {persona === "founder" ? "Founder" : "Customer"} Narration</>}
+                </Button>
             </div>
+
+            {narration && (
+                <div className="editorial-card p-5 md:p-6 mb-6 bg-brand-charcoal text-brand-cream" data-testid={`hj-narration-${persona}`}>
+                    <div className="label-eyebrow text-brand-gold mb-2">{persona === "founder" ? "Your Founder's Journey" : "Your Customer's Journey"} · AI synthesis</div>
+                    <p className="font-serif text-base md:text-lg leading-relaxed whitespace-pre-line">{narration}</p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
                 <div className="lg:col-span-5">
@@ -471,6 +518,93 @@ function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove 
     }
 
     const [busy, setBusy] = useState(false);
+    const [suggestingStack, setSuggestingStack] = useState(false);
+    const [suggestingPrice, setSuggestingPrice] = useState(false);
+
+    async function suggestStack() {
+        if (suggestingStack) return;
+        setSuggestingStack(true);
+        try {
+            const offerN = offerName(id, getInput, idx);
+            const offerDesc = getInput(STEP_NUM, `${id}_description`) || "";
+            const voice = getInput(STEP_NUM, "brand_voice_statement") || "";
+            const json = await streamAIText("/ai/generate", {
+                plan_id: planId,
+                step_num: STEP_NUM,
+                field_key: `${id}_stack`,
+                field_label: `Offer stack for ${offerN}`,
+                sub_module: "Hook-Story-Offer",
+                extra_context: { offer_name: offerN, description: offerDesc, brand_voice: voice },
+                instructions:
+                    "Generate 5–7 stack items that make up this offer's full deliverable bundle. " +
+                    "Each item must be concrete (a thing they get), have a tangible benefit, and a dollar value. " +
+                    "Return ONLY a JSON array of objects with keys `item` (string, max 60 chars), `benefit` (string, max 120 chars), `value` (string, e.g. \"$497\"). No markdown, no prose, no commentary — pure JSON array starting with [ and ending with ].",
+            });
+            // Strip code fences / commentary if model added any
+            let cleaned = json.trim();
+            const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]+?)```/);
+            if (fenceMatch) cleaned = fenceMatch[1].trim();
+            const startIdx = cleaned.indexOf("[");
+            const endIdx = cleaned.lastIndexOf("]");
+            if (startIdx >= 0 && endIdx > startIdx) cleaned = cleaned.slice(startIdx, endIdx + 1);
+            let parsed;
+            try { parsed = JSON.parse(cleaned); } catch (parseErr) { console.warn("stack JSON parse failed:", parseErr); }
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                toast.error("AI returned an unexpected format. Try again.");
+                return;
+            }
+            const next = parsed.slice(0, 8).map((r) => ({
+                item: String(r.item || "").slice(0, 120),
+                benefit: String(r.benefit || "").slice(0, 200),
+                value: String(r.value || "").slice(0, 40),
+                _id: _newRowId(),
+            }));
+            updateStack(next);
+            toast.success(`AI built a ${next.length}-item stack.`);
+        } catch (e) {
+            toast.error(e.message || "Could not suggest a stack.");
+        } finally {
+            setSuggestingStack(false);
+        }
+    }
+
+    async function suggestPrice() {
+        if (suggestingPrice) return;
+        setSuggestingPrice(true);
+        try {
+            const offerN = offerName(id, getInput, idx);
+            const stackText = stack.filter((r) => r.item || r.benefit || r.value).map((r, i) => `${i + 1}. ${r.item || "?"} — ${r.benefit || "?"} — value: ${r.value || "?"}`).join("\n") || "(empty)";
+            const final = await streamAIText("/ai/synthesize", {
+                plan_id: planId,
+                step_num: STEP_NUM,
+                field_key: `${id}_price`,
+                field_label: `Smart price recommendation for ${offerN}`,
+                sub_module: "Hook-Story-Offer",
+                extra_context: { offer_name: offerN, stack: stackText },
+                instructions:
+                    "You are a premium offer pricing strategist. Analyze the offer and its stack using the user's full plan context (niche, dream customer demographics including income, psychographics, brand positioning). Output EXACTLY this format on three lines, no markdown:\n" +
+                    "Range: $X – $Y\n" +
+                    "Recommended: $Z\n" +
+                    "Why: <one short sentence rationale, max 25 words>\n" +
+                    "Use whole numbers, no decimals. Recommended must sit within Range. Pick prices that reflect the audience's income level and the total value of the stack.",
+            });
+            const recoMatch = final.match(/Recommended:\s*(\$?[\d,.]+)/i);
+            if (recoMatch && recoMatch[1]) {
+                const price = recoMatch[1].startsWith("$") ? recoMatch[1] : `$${recoMatch[1]}`;
+                setInput(STEP_NUM, `${id}_price`, price);
+                persist(planId, `${id}_price`, price);
+            }
+            // Persist the full rationale separately for the output card
+            setInput(STEP_NUM, `${id}_price_rationale`, final);
+            persist(planId, `${id}_price_rationale`, final);
+            toast.success("AI suggested a price.", { description: final.split("\n").slice(0, 2).join(" · ") });
+        } catch (e) {
+            toast.error(e.message || "Could not suggest a price.");
+        } finally {
+            setSuggestingPrice(false);
+        }
+    }
+
     async function generateHookStory() {
         const stackText = stack.filter((r) => r.item || r.benefit || r.value).map((r, i) => `${i + 1}. ${r.item || "?"} — ${r.benefit || "?"} — value: ${r.value || "?"}`).join("\n");
         const price = getInput(STEP_NUM, `${id}_price`) || "";
@@ -542,9 +676,16 @@ function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove 
 
             {pane === "details" && (
                 <div>
-                    <div className="label-eyebrow mb-2">Offer Stack</div>
-                    <p className="text-xs text-muted-foreground mb-3">Break the offer into items. For each: what they get, the benefit, and the dollar value of that piece.</p>
-                    <div className="space-y-2" data-testid={`offer-${id}-stack`}>
+                    <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                        <div>
+                            <div className="label-eyebrow">Offer Stack</div>
+                            <p className="text-xs text-muted-foreground">Break the offer into items. For each: what they get, the benefit, and the dollar value of that piece.</p>
+                        </div>
+                        <Button onClick={suggestStack} disabled={suggestingStack} size="sm" variant="outline" className="rounded-full" data-testid={`offer-${id}-suggest-stack`}>
+                            {suggestingStack ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Suggesting…</> : <><Wand2 className="h-3.5 w-3.5 mr-2" /> Suggest stack with AI</>}
+                        </Button>
+                    </div>
+                    <div className="space-y-2 mt-2" data-testid={`offer-${id}-stack`}>
                         <div className="grid grid-cols-12 gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
                             <div className="col-span-4">Item</div>
                             <div className="col-span-5">Benefit</div>
@@ -568,7 +709,12 @@ function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove 
 
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
                         <div>
-                            <div className="label-eyebrow mb-1">Final Price</div>
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="label-eyebrow">Final Price</div>
+                                <Button onClick={suggestPrice} disabled={suggestingPrice} size="sm" variant="ghost" className="h-6 px-2 text-xs text-brand-bronze hover:text-brand-gold" data-testid={`offer-${id}-suggest-price`}>
+                                    {suggestingPrice ? <Loader2 className="h-3 w-3 animate-spin" /> : <><DollarSign className="h-3 w-3 mr-1" /> Suggest with AI</>}
+                                </Button>
+                            </div>
                             <Input
                                 value={getInput(STEP_NUM, `${id}_price`) || ""}
                                 onChange={(e) => setInput(STEP_NUM, `${id}_price`, e.target.value)}
@@ -577,6 +723,9 @@ function OfferEditor({ id, idx, planId, getInput, setInput, onRemove, canRemove 
                                 className="h-11 rounded-xl"
                                 data-testid={`offer-${id}-price`}
                             />
+                            {getInput(STEP_NUM, `${id}_price_rationale`) && (
+                                <p className="text-[11px] text-muted-foreground mt-1.5 whitespace-pre-line">{getInput(STEP_NUM, `${id}_price_rationale`)}</p>
+                            )}
                         </div>
                     </div>
 
@@ -737,6 +886,8 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const founderStages = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, `${s.key}__founder`) || "").trim().length > 0).length;
     const customerStages = HEROS_JOURNEY_STAGES.filter((s) => (getInput(STEP_NUM, `${s.key}__customer`) || "").trim().length > 0).length;
     const voice = getInput(STEP_NUM, "brand_voice_statement");
+    const founderNarration = getInput(STEP_NUM, "hero_journey_founder_narration") || "";
+    const customerNarration = getInput(STEP_NUM, "hero_journey_customer_narration") || "";
 
     async function complete() {
         setMarking(true);
@@ -753,12 +904,30 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
             <div className="editorial-card p-7 md:p-8" data-testid="step3-output-card">
                 <Field label="Brand Voice" value={voice} multiline />
 
+                {(founderNarration || customerNarration) && (
+                    <div className="py-3 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="output-journeys">
+                        {founderNarration && (
+                            <div className="rounded-xl bg-brand-charcoal text-brand-cream p-5">
+                                <div className="label-eyebrow text-brand-gold mb-2">Founder's Journey</div>
+                                <p className="text-sm leading-relaxed whitespace-pre-line font-serif">{founderNarration}</p>
+                            </div>
+                        )}
+                        {customerNarration && (
+                            <div className="rounded-xl bg-brand-charcoal text-brand-cream p-5">
+                                <div className="label-eyebrow text-brand-gold mb-2">Customer's Journey</div>
+                                <p className="text-sm leading-relaxed whitespace-pre-line font-serif">{customerNarration}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="py-3">
                     <div className="label-eyebrow text-brand-bronze mb-2">Offers ({offerIds.length})</div>
                     <div className="space-y-5" data-testid="output-offers">
                         {offerIds.map((id, idx) => {
                             const stack = readStack(getInput, id).filter((r) => r.item || r.benefit || r.value);
                             const price = getInput(STEP_NUM, `${id}_price`);
+                            const priceRationale = getInput(STEP_NUM, `${id}_price_rationale`);
                             const hook = getInput(STEP_NUM, `${id}_hook`);
                             const story = getInput(STEP_NUM, `${id}_story`);
                             const promise = getInput(STEP_NUM, `${id}_promise`);
@@ -769,6 +938,7 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                                         <div className="font-serif text-2xl">{offerName(id, getInput, idx)}</div>
                                         {price && <div className="text-brand-bronze font-serif text-xl">{price}</div>}
                                     </div>
+                                    {priceRationale && <p className="text-[11px] text-muted-foreground mt-1 italic whitespace-pre-line">{priceRationale}</p>}
                                     {stack.length > 0 && (
                                         <div className="mt-3">
                                             <div className="label-eyebrow text-brand-bronze mb-1.5">Stack</div>
@@ -782,7 +952,7 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                                     {hook && <Sub label="Hook" value={hook} />}
                                     {story && <Sub label="Story" value={story} />}
                                     {promise && <Sub label="Transformation Promise" value={promise} />}
-                                    {elevator && <Sub label="Elevator Pitch (200 words)" value={elevator} />}
+                                    {elevator && <Sub label="Important Story — Elevator Pitch" value={elevator} />}
                                 </div>
                             );
                         })}
@@ -795,6 +965,33 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                         <Stat label="Story Bank" value={`${storiesFilled} / 9`} testId="output-stat-stories" />
                         <Stat label="Founder Journey" value={`${founderStages} / 12`} testId="output-stat-founder" />
                         <Stat label="Customer Journey" value={`${customerStages} / 12`} testId="output-stat-customer" />
+                    </div>
+                </div>
+
+                {/* Full Story Bank — 9 sections */}
+                <div className="py-3 mt-2 border-t border-border pt-6" data-testid="output-story-bank">
+                    <div className="label-eyebrow text-brand-bronze mb-3">Story Bank · Full Archive</div>
+                    <div className="space-y-5">
+                        {STORY_BANK_PROMPTS.map((cat) => {
+                            const entries = cat.questions.map((q) => ({ q: q.q || q.prompt || q.label, v: getInput(STEP_NUM, `${cat.key}_${q.key}`) || "" })).filter((e) => e.v.trim().length > 0);
+                            if (entries.length === 0) return null;
+                            return (
+                                <div key={cat.key} className="rounded-xl bg-secondary/30 p-4" data-testid={`story-bank-section-${cat.key}`}>
+                                    <div className="font-serif text-lg mb-2">{cat.label || cat.title || cat.key}</div>
+                                    <ul className="space-y-2">
+                                        {entries.map((e, i) => (
+                                            <li key={i} className="text-sm">
+                                                {e.q && <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-0.5">{e.q}</div>}
+                                                <div className="leading-relaxed whitespace-pre-wrap">{e.v}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })}
+                        {STORY_BANK_PROMPTS.every((cat) => cat.questions.every((q) => !(getInput(STEP_NUM, `${cat.key}_${q.key}`) || "").trim())) && (
+                            <p className="text-sm text-muted-foreground italic">No stories drafted yet — fill in the Story Bank tab to populate this archive.</p>
+                        )}
                     </div>
                 </div>
             </div>

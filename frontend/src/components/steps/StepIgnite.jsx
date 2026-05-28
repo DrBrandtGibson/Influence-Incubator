@@ -150,9 +150,9 @@ function BrandPersonality({ planId, getInput, setInput }) {
                 extra_context: { primary: primaryArch },
                 instructions:
                     "Generate exactly 3 distinct typography pairings for this brand, returned as JSON only (no markdown). " +
-                    "Each pairing must have: name (1–3 words describing the feel), heading (Google Font family name), body (Google Font family name), rationale (1 sentence on why it fits the archetype). " +
-                    "Only use widely available Google Fonts. Avoid system-ui. " +
-                    "Return: {\"pairings\": [{\"name\": \"\", \"heading\": \"\", \"body\": \"\", \"rationale\": \"\"}, ...]}. JSON only.",
+                    "Each pairing must have: name (1–3 words describing the feel), headline (Google Font family for big display/H1/hero), subheadline (Google Font family for H2–H3, can equal headline), body (Google Font family for paragraph/UI text), rationale (1 sentence on why it fits the archetype). " +
+                    "Use widely available Google Fonts. Avoid system-ui. The three roles can mix serif/sans/mono for contrast. " +
+                    "Return: {\"pairings\": [{\"name\": \"\", \"headline\": \"\", \"subheadline\": \"\", \"body\": \"\", \"rationale\": \"\"}, ...]}. JSON only.",
                 planId, stepNum: STEP_NUM, mode: "generate",
                 onText: (t) => setInput(STEP_NUM, "typography_json", t)
             });
@@ -282,15 +282,17 @@ function PalettesDisplay({ raw, selectedName, onPick }) {
                             {active && <Check className="h-4 w-4 text-brand-bronze" />}
                         </div>
                         {p.mood && <p className="text-xs text-brand-charcoal/70 mb-3 leading-snug">{p.mood}</p>}
-                        <div className="flex h-12 rounded-lg overflow-hidden shadow-sm">
-                            {(p.colors || []).map((c, j) => (
-                                <div key={j} className="flex-1" style={{ background: c }} title={c} />
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                            {(p.colors || []).map((c, j) => (
-                                <code key={j} className="text-[10px] font-mono text-brand-charcoal/60">{c}</code>
-                            ))}
+                        <div className="rounded-lg overflow-hidden shadow-sm">
+                            <div className="flex h-12">
+                                {(p.colors || []).map((c, j) => (
+                                    <div key={j} className="flex-1" style={{ background: c }} title={c} />
+                                ))}
+                            </div>
+                            <div className="flex">
+                                {(p.colors || []).map((c, j) => (
+                                    <code key={j} className="flex-1 text-[10px] font-mono text-brand-charcoal/70 text-center py-1 border-r border-brand-charcoal/10 last:border-r-0">{c}</code>
+                                ))}
+                            </div>
                         </div>
                     </button>
                 );
@@ -310,9 +312,11 @@ function TypographyDisplay({ raw, selectedName, onPick }) {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="typo-grid">
             {pairings.map((p, i) => {
                 const active = selectedName === p.name;
-                const gfHeading = (p.heading || "").trim();
+                const gfHeadline = (p.headline || p.heading || "").trim();
+                const gfSubheadline = (p.subheadline || p.heading || gfHeadline).trim();
                 const gfBody = (p.body || "").trim();
-                const fontHrefs = [gfHeading, gfBody].filter(Boolean).map((f) => `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f)}:wght@400;700&display=swap`);
+                const uniq = Array.from(new Set([gfHeadline, gfSubheadline, gfBody].filter(Boolean)));
+                const fontHrefs = uniq.map((f) => `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f)}:wght@400;600;700&display=swap`);
                 return (
                     <button
                         key={p.name || i}
@@ -329,13 +333,17 @@ function TypographyDisplay({ raw, selectedName, onPick }) {
                             {active && <Check className="h-4 w-4 text-brand-bronze" />}
                         </div>
                         <div className="mb-3">
-                            <div className="text-xs text-brand-charcoal/60 mb-1">Heading · {gfHeading}</div>
-                            <div className="text-2xl leading-tight" style={{ fontFamily: gfHeading ? `'${gfHeading}', serif` : undefined, fontWeight: 700 }}>Marketing Your Extraordinary.</div>
+                            <div className="text-[10px] uppercase tracking-wider text-brand-charcoal/60 mb-1">Headline · {gfHeadline}</div>
+                            <div className="text-2xl leading-tight" style={{ fontFamily: gfHeadline ? `'${gfHeadline}', serif` : undefined, fontWeight: 700 }}>Marketing Your Extraordinary.</div>
                         </div>
                         <div className="mb-3">
-                            <div className="text-xs text-brand-charcoal/60 mb-1">Body · {gfBody}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-brand-charcoal/60 mb-1">Subheadline · {gfSubheadline}</div>
+                            <div className="text-base leading-snug" style={{ fontFamily: gfSubheadline ? `'${gfSubheadline}', serif` : undefined, fontWeight: 600 }}>Turn the spark inside you into a complete plan.</div>
+                        </div>
+                        <div className="mb-3">
+                            <div className="text-[10px] uppercase tracking-wider text-brand-charcoal/60 mb-1">Body · {gfBody}</div>
                             <div className="text-sm leading-relaxed" style={{ fontFamily: gfBody ? `'${gfBody}', sans-serif` : undefined }}>
-                                Turn the spark inside you into a complete, structured business plan with AI as co-author.
+                                The Influence Incubator Formula walks you through seven steps to build a brand, write your story, and launch the work only you can lead.
                             </div>
                         </div>
                         {p.rationale && <p className="text-[11px] text-brand-charcoal/70 italic leading-snug">{p.rationale}</p>}
@@ -513,8 +521,49 @@ function WebsiteHub({ planId, getInput, setInput }) {
 
 // =================== TWO-TRACK MARKETING PLAN ===================
 function MarketingPlan({ planId, getInput, setInput }) {
+    const [busy, setBusy] = useState(false);
+
+    async function generateAllPlan() {
+        if (busy) return;
+        setBusy(true);
+        toast.message("Building your marketing plan…", { description: "Drafting both tracks across all sections." });
+        try {
+            // Generate every {track, field} combination in parallel
+            const tasks = [];
+            for (const t of MARKETING_TRACKS) {
+                for (const f of MARKETING_TRACK_FIELDS) {
+                    const fieldKey = `mt_${t.key}_${f.key}`;
+                    tasks.push(streamingGenerate({
+                        field_key: fieldKey,
+                        field_label: `${t.name} — ${f.label}`,
+                        extra_context: { track: t.name, track_subtitle: t.subtitle, field: f.label, field_helper: f.helper },
+                        instructions:
+                            `For the ${t.name} marketing track ("${t.subtitle}"), write the section: "${f.label}". ` +
+                            `Helper context: ${f.helper}. ` +
+                            "Use the user's full plan context (niche, dream customer, brand voice, archetype). " +
+                            "Output 2–4 concrete tactical sentences. No headings, no bullets, just clean prose. " +
+                            "Be specific (name platforms, frequencies, ICP-fit examples) — avoid platitudes.",
+                        planId, stepNum: STEP_NUM, mode: "generate",
+                        onText: (text) => setInput(STEP_NUM, fieldKey, text),
+                    }));
+                }
+            }
+            await Promise.all(tasks);
+            toast.success("Marketing plan drafted across both tracks.");
+        } catch (e) {
+            toast.error(e.message || "Could not generate full plan.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
     return (
         <Section eyebrow="Marketing Plan" title="Two tracks. Pick your blend." helper={IGNITE_INTROS.marketing_plan}>
+            <div className="flex justify-end mb-4">
+                <Button onClick={generateAllPlan} disabled={busy} className="cta-red rounded-full h-11 px-5" data-testid="generate-marketing-plan-button">
+                    {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating Plan…</> : <><Sparkles className="h-4 w-4 mr-2" /> Generate Plan with AI</>}
+                </Button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {MARKETING_TRACKS.map((t) => {
                     const Icon = t.key === "diy" ? Wrench : Bot;
@@ -551,8 +600,47 @@ function MarketingPlan({ planId, getInput, setInput }) {
 
 // =================== 30/60/90 CALENDAR ===================
 function ContentCalendar({ planId, getInput, setInput }) {
+    const [busy, setBusy] = useState(false);
+
+    async function generateCalendar() {
+        if (busy) return;
+        setBusy(true);
+        toast.message("Filling your 30/60/90 calendar…", { description: "Drafting every cell." });
+        try {
+            const tasks = [];
+            for (const pl of CALENDAR_PILLARS) {
+                for (const ph of CALENDAR_PHASES) {
+                    const fieldKey = `cal_${pl.key}_${ph.key}`;
+                    tasks.push(streamingGenerate({
+                        field_key: fieldKey,
+                        field_label: `${pl.label} — ${ph.label}`,
+                        extra_context: { pillar: pl.label, pillar_helper: pl.helper, phase: ph.label, phase_subtitle: ph.subtitle, phase_desc: ph.desc },
+                        instructions:
+                            `For the content pillar "${pl.label}" (${pl.helper}) during phase "${ph.label}" — ${ph.subtitle} (${ph.desc}), ` +
+                            "draft a tight tactical entry: 2–3 short bullet-style sentences naming specific content angles, formats, or hooks. " +
+                            "Use the user's full plan context (niche, dream customer, brand voice, archetype). " +
+                            "Be concrete and ready-to-execute. Return plain prose with no bullet characters — keep it scannable.",
+                        planId, stepNum: STEP_NUM, mode: "generate",
+                        onText: (text) => setInput(STEP_NUM, fieldKey, text),
+                    }));
+                }
+            }
+            await Promise.all(tasks);
+            toast.success("Calendar drafted across every phase.");
+        } catch (e) {
+            toast.error(e.message || "Could not generate the calendar.");
+        } finally {
+            setBusy(false);
+        }
+    }
+
     return (
         <Section eyebrow="30/60/90 + Beyond" title="Your cadence on a single page." helper={IGNITE_INTROS.calendar}>
+            <div className="flex justify-end mb-4">
+                <Button onClick={generateCalendar} disabled={busy} className="cta-red rounded-full h-11 px-5" data-testid="generate-calendar-button">
+                    {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating Calendar…</> : <><Sparkles className="h-4 w-4 mr-2" /> Generate Plan with AI</>}
+                </Button>
+            </div>
             <div className="overflow-x-auto">
                 <div className="min-w-[900px] grid gap-3" style={{ gridTemplateColumns: "180px repeat(4, minmax(0, 1fr))" }}>
                     {/* Header row */}
@@ -625,6 +713,29 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
     const channels = POCKET_MEDIA_CHANNELS.filter((c) => getInput(STEP_NUM, `pm_${c.key}_enabled`) === "yes");
     const siteTpl = WEBSITE_HUB_TEMPLATES.find((t) => t.key === getInput(STEP_NUM, "site_template"));
 
+    // Pull each enabled channel's full detail set
+    const channelDetails = channels.map((c) => {
+        const Icon = CHANNEL_ICON[c.key] || Mic;
+        return {
+            key: c.key,
+            name: getInput(STEP_NUM, `pm_${c.key}_name`) || c.name,
+            url: getInput(STEP_NUM, `pm_${c.key}_url`) || "",
+            format: getInput(STEP_NUM, `pm_${c.key}_format`) || "",
+            cadence: getInput(STEP_NUM, `pm_${c.key}_cadence`) || "",
+            audience: getInput(STEP_NUM, `pm_${c.key}_audience_pull`) || "",
+            kpi: getInput(STEP_NUM, `pm_${c.key}_kpi`) || "",
+            ideas: getInput(STEP_NUM, `pm_${c.key}_first_5_ideas`) || "",
+            Icon,
+        };
+    });
+
+    // Website pages — pull each page draft
+    const sitePages = siteTpl ? siteTpl.pages.map((pg) => ({
+        key: pg.key,
+        name: pg.name,
+        draft: getInput(STEP_NUM, `site_${siteTpl.key}_${pg.key}`) || "",
+    })).filter((p) => p.draft) : [];
+
     async function complete() {
         setMarking(true);
         try {
@@ -653,8 +764,15 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                         <div data-testid="output-palette">
                             <div className="font-serif text-lg mb-1">{palette.name}</div>
                             {palette.mood && <p className="text-xs text-muted-foreground mb-2">{palette.mood}</p>}
-                            <div className="flex h-10 rounded-lg overflow-hidden max-w-md">
-                                {(palette.colors || []).map((c, j) => <div key={j} className="flex-1" style={{ background: c }} title={c} />)}
+                            <div className="rounded-lg overflow-hidden max-w-xl">
+                                <div className="flex h-10">
+                                    {(palette.colors || []).map((c, j) => <div key={j} className="flex-1" style={{ background: c }} title={c} />)}
+                                </div>
+                                <div className="flex bg-secondary/30">
+                                    {(palette.colors || []).map((c, j) => (
+                                        <code key={j} className="flex-1 text-[10px] font-mono text-center py-1 border-r border-border/40 last:border-r-0" data-testid={`output-palette-hex-${j}`}>{c}</code>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     ) : <span className="text-sm text-muted-foreground">—</span>}
@@ -664,34 +782,112 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                 <div className="py-3">
                     <div className="label-eyebrow text-brand-bronze mb-2">Typography</div>
                     {typo ? (
-                        <div data-testid="output-typography">
+                        <div data-testid="output-typography" className="space-y-1">
                             <div className="font-serif text-lg mb-1">{typo.name}</div>
-                            <div className="text-xs text-muted-foreground">Heading: {typo.heading} · Body: {typo.body}</div>
+                            <div className="text-xs text-muted-foreground">
+                                Headline: <span className="text-foreground font-medium">{typo.headline || typo.heading || "—"}</span>
+                                {" · "}Subheadline: <span className="text-foreground font-medium">{typo.subheadline || typo.heading || "—"}</span>
+                                {" · "}Body: <span className="text-foreground font-medium">{typo.body || "—"}</span>
+                            </div>
                         </div>
                     ) : <span className="text-sm text-muted-foreground">—</span>}
                 </div>
 
-                {/* Channels */}
+                {/* Channels — full cards */}
                 <div className="py-3">
-                    <div className="label-eyebrow text-brand-bronze mb-2">Pocket Media Mix</div>
-                    {channels.length > 0 ? (
-                        <div className="flex flex-wrap gap-2" data-testid="output-channels">
-                            {channels.map((c) => {
-                                const Icon = CHANNEL_ICON[c.key] || Mic;
-                                return (
-                                    <span key={c.key} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/15 text-foreground border border-brand-gold/30 text-sm">
-                                        <Icon className="h-3.5 w-3.5 text-brand-bronze" /> {c.name}
-                                    </span>
-                                );
-                            })}
+                    <div className="label-eyebrow text-brand-bronze mb-2">Pocket Media Empire — Channels in the Mix</div>
+                    {channelDetails.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="output-channels">
+                            {channelDetails.map((c) => (
+                                <div key={c.key} className="editorial-card p-5 bg-secondary/30" data-testid={`output-channel-${c.key}`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <c.Icon className="h-4 w-4 text-brand-bronze" />
+                                        <div className="font-serif text-lg">{c.name}</div>
+                                    </div>
+                                    {c.url && <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-brand-bronze break-all hover:underline">{c.url}</a>}
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                                        {c.format && <div><span className="text-muted-foreground uppercase tracking-wider text-[10px]">Format</span><div>{c.format}</div></div>}
+                                        {c.cadence && <div><span className="text-muted-foreground uppercase tracking-wider text-[10px]">Cadence</span><div>{c.cadence}</div></div>}
+                                        {c.audience && <div className="col-span-2"><span className="text-muted-foreground uppercase tracking-wider text-[10px]">Audience Pull</span><div>{c.audience}</div></div>}
+                                        {c.kpi && <div className="col-span-2"><span className="text-muted-foreground uppercase tracking-wider text-[10px]">KPI</span><div>{c.kpi}</div></div>}
+                                    </div>
+                                    {c.ideas && (
+                                        <div className="mt-3 pt-3 border-t border-border/40">
+                                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">First 5 Ideas</div>
+                                            <div className="text-sm whitespace-pre-wrap leading-relaxed">{c.ideas}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                    ) : <span className="text-sm text-muted-foreground">—</span>}
+                    ) : <span className="text-sm text-muted-foreground">No channels enabled yet.</span>}
                 </div>
 
-                {/* Site */}
+                {/* Site — full drafted pages */}
                 <div className="py-3">
-                    <div className="label-eyebrow text-brand-bronze mb-1">Website Template</div>
-                    <div className="font-serif text-lg">{siteTpl ? siteTpl.name : "—"}</div>
+                    <div className="label-eyebrow text-brand-bronze mb-2">Website — {siteTpl ? siteTpl.name : "—"}</div>
+                    {sitePages.length > 0 ? (
+                        <div className="space-y-3" data-testid="output-site-pages">
+                            {sitePages.map((pg) => (
+                                <div key={pg.key} className="rounded-xl bg-secondary/30 p-4" data-testid={`output-site-page-${pg.key}`}>
+                                    <div className="font-serif text-base mb-1.5">{pg.name}</div>
+                                    <div className="text-sm whitespace-pre-wrap leading-relaxed">{pg.draft}</div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : <span className="text-sm text-muted-foreground">No pages drafted yet.</span>}
+                </div>
+
+                {/* Marketing Plan — both tracks */}
+                <div className="py-3">
+                    <div className="label-eyebrow text-brand-bronze mb-2">Marketing Plan — Both Tracks</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="output-marketing-plan">
+                        {MARKETING_TRACKS.map((t) => {
+                            const rows = MARKETING_TRACK_FIELDS.map((f) => ({ label: f.label, value: getInput(STEP_NUM, `mt_${t.key}_${f.key}`) || "" })).filter((r) => r.value);
+                            if (rows.length === 0) return null;
+                            return (
+                                <div key={t.key} className="rounded-xl bg-secondary/30 p-4" data-testid={`output-track-${t.key}`}>
+                                    <div className="font-serif text-lg mb-2">{t.name}</div>
+                                    <div className="space-y-2">
+                                        {rows.map((r) => (
+                                            <div key={r.label}>
+                                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</div>
+                                                <div className="text-sm whitespace-pre-wrap leading-relaxed">{r.value}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 30/60/90 Calendar */}
+                <div className="py-3">
+                    <div className="label-eyebrow text-brand-bronze mb-2">30/60/90 + Beyond Calendar</div>
+                    <div className="overflow-x-auto" data-testid="output-calendar">
+                        <table className="min-w-[700px] w-full text-xs">
+                            <thead>
+                                <tr>
+                                    <th className="text-left py-2 pr-2 font-serif text-sm">Pillar</th>
+                                    {CALENDAR_PHASES.map((ph) => (
+                                        <th key={ph.key} className="text-left py-2 px-2 font-serif text-sm">{ph.label}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {CALENDAR_PILLARS.map((pl) => (
+                                    <tr key={pl.key} className="align-top border-t border-border/40">
+                                        <td className="py-2 pr-2 font-medium">{pl.label}</td>
+                                        {CALENDAR_PHASES.map((ph) => {
+                                            const v = getInput(STEP_NUM, `cal_${pl.key}_${ph.key}`) || "";
+                                            return <td key={ph.key} className="py-2 px-2 whitespace-pre-wrap leading-relaxed">{v || <span className="text-muted-foreground">—</span>}</td>;
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

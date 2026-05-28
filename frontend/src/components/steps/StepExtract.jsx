@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Loader2, Check, Target, Users, Compass, Layers, IdCard, Download, ArrowLeft, ArrowRight, ChevronRight } from "lucide-react";
+import { Sparkles, Loader2, Check, Target, Users, Compass, Layers, IdCard, Download, ArrowLeft, ArrowRight, ChevronRight, Wand2, ImageIcon } from "lucide-react";
 import { AIAssistInput } from "@/components/ai/AIAssistInput";
 import { authedFetch } from "@/lib/supabase";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { SIX_NEEDS, NICHE_OPTIONS, NICHE_QUESTIONS, DEMOGRAPHICS_QUESTIONS, PSYCHOGRAPHICS_QUESTIONS } from "@/lib/framework";
+import { SIX_NEEDS, MASLOW_LEVELS, NICHE_OPTIONS, NICHE_QUESTIONS, DEMOGRAPHICS_QUESTIONS, PSYCHOGRAPHICS_QUESTIONS } from "@/lib/framework";
 import { STEPS } from "@/lib/steps";
 import { toPng } from "html-to-image";
 import { MaslowImagePyramid } from "./MaslowImagePyramid";
@@ -241,15 +241,96 @@ function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep }) {
     const [downloading, setDownloading] = useState(false);
     const [marking, setMarking] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
+    const [generatingName, setGeneratingName] = useState(false);
+    const [generatingPortrait, setGeneratingPortrait] = useState(false);
+
+    const maslowKeys = parseList(getInput(2, "maslow_levels"));
+    const needsKeys = parseList(getInput(2, "robbins_needs"));
+    const maslowLabels = MASLOW_LEVELS.filter((m) => maslowKeys.includes(m.key)).map((m) => m.label);
+    const needsLabels = SIX_NEEDS.filter((n) => needsKeys.includes(n.key)).map((n) => n.label);
 
     const data = {
         name: getInput(2, "dc_name") || "Your Dream Customer",
         photoUrl: getInput(2, "dc_photo") || "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop&q=80",
         nicheLabel: NICHE_OPTIONS.find((n) => n.key === getInput(2, "niche_type"))?.label || "—",
         microNiche: getInput(2, "micro_niche_statement"),
-        demographics: DEMOGRAPHICS_QUESTIONS.map((d) => ({ k: d.q, v: getInput(2, `demo_${d.key}`) })).filter((x) => x.v).slice(0, 6),
-        psychographics: PSYCHOGRAPHICS_QUESTIONS.map((d) => ({ k: d.q, v: getInput(2, `psycho_${d.key}`) })).filter((x) => x.v).slice(0, 6)
+        demographics: DEMOGRAPHICS_QUESTIONS.map((d) => ({ k: d.q, v: getInput(2, `demo_${d.key}`) })).filter((x) => x.v).slice(0, 5),
+        psychographics: PSYCHOGRAPHICS_QUESTIONS.map((d) => ({ k: d.q, v: getInput(2, `psycho_${d.key}`) })).filter((x) => x.v).slice(0, 5),
+        maslow: maslowLabels,
+        needs: needsLabels,
     };
+
+    async function suggestName() {
+        setGeneratingName(true);
+        try {
+            const demoSummary = DEMOGRAPHICS_QUESTIONS.map((d) => `${d.q}: ${getInput(2, `demo_${d.key}`) || ""}`).filter((s) => !s.endsWith(": ")).join(" | ").slice(0, 800);
+            const psychoSummary = PSYCHOGRAPHICS_QUESTIONS.map((d) => `${d.q}: ${getInput(2, `psycho_${d.key}`) || ""}`).filter((s) => !s.endsWith(": ")).join(" | ").slice(0, 800);
+            const res = await authedFetch("/ai/synthesize", {
+                method: "POST",
+                body: JSON.stringify({
+                    plan_id: planId,
+                    step_num: 2,
+                    field_key: "dc_name",
+                    field_label: "Dream Customer Persona Name",
+                    sub_module: "Dream Customer Card",
+                    instructions: `Suggest ONE memorable persona name for this dream customer, in the format "<First Name> the <Identity>" (e.g., "Maya the High-Achiever", "Daniel the Quiet Founder"). Use ONLY the name — no quotes, no explanation, no punctuation around it. Base the identity on the strongest demographic + psychographic signals. Demographics: ${demoSummary}. Psychographics: ${psychoSummary}.`,
+                }),
+            });
+            if (!res.ok) throw new Error("AI request failed");
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = "";
+            let final = "";
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                const events = buf.split("\n\n");
+                buf = events.pop() || "";
+                for (const ev of events) {
+                    const m = ev.match(/^event: (\w+)\ndata: (.+)$/m);
+                    if (!m) continue;
+                    if (m[1] === "done") {
+                        try { final = JSON.parse(m[2]).text || ""; } catch { /* */ }
+                    }
+                }
+            }
+            const cleaned = final.trim().replace(/^["“'']|["”'']$/g, "").split("\n")[0].trim();
+            if (cleaned) {
+                setInput(2, "dc_name", cleaned);
+                authedFetch(`/plans/${planId}/inputs`, { method: "POST", body: JSON.stringify({ step_num: 2, field_key: "dc_name", value: cleaned }) });
+                toast.success(`Name suggested: ${cleaned}`);
+            }
+        } catch (e) {
+            toast.error("Could not suggest a name. Try again.");
+        } finally {
+            setGeneratingName(false);
+        }
+    }
+
+    async function generatePortrait() {
+        setGeneratingPortrait(true);
+        toast.message("Painting your customer…", { description: "This usually takes 5–15 seconds." });
+        try {
+            const res = await authedFetch("/ai/generate-portrait", {
+                method: "POST",
+                body: JSON.stringify({ plan_id: planId, style: "editorial-portrait" }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.detail || "Portrait generation failed.");
+            }
+            const j = await res.json();
+            if (j.url) {
+                setInput(2, "dc_photo", j.url);
+                toast.success("Portrait generated.");
+            }
+        } catch (e) {
+            toast.error(e.message || "Could not generate portrait.");
+        } finally {
+            setGeneratingPortrait(false);
+        }
+    }
 
     async function exportPng() {
         if (!cardRef.current) return;
@@ -274,17 +355,23 @@ function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep }) {
     if (showCelebration) return <Celebration onContinue={() => { gotoStep(STEPS[2]); }} onSkip={() => setShowCelebration(false)} />;
 
     return (
-        <Section eyebrow="Trading Card" title="Your Dream Customer." helper="Customize the photo and name. Edit answers via Demographics & Psychographics tabs to update the card.">
+        <Section eyebrow="Trading Card" title="Your Dream Customer." helper="AI can suggest a persona name and paint a portrait — both grounded in your Demographics & Psychographics answers. Update those tabs to change the card.">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-7">
                 <div className="lg:col-span-1 space-y-4">
                     <div>
                         <div className="label-eyebrow mb-1.5">Customer name (or alias)</div>
                         <Input value={getInput(2, "dc_name")} onChange={(e) => setInput(2, "dc_name", e.target.value)} placeholder="e.g. Maya the High-Achiever" data-testid="dc-name-input" />
+                        <Button onClick={suggestName} disabled={generatingName} size="sm" variant="outline" className="mt-2 w-full rounded-lg" data-testid="dc-suggest-name-button">
+                            {generatingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Wand2 className="h-3.5 w-3.5 mr-2" /> Suggest a name with AI</>}
+                        </Button>
                     </div>
                     <div>
-                        <div className="label-eyebrow mb-1.5">Photo URL (optional)</div>
+                        <div className="label-eyebrow mb-1.5">Photo</div>
                         <Input value={getInput(2, "dc_photo")} onChange={(e) => setInput(2, "dc_photo", e.target.value)} placeholder="https://…" data-testid="dc-photo-input" />
-                        <p className="text-[11px] text-muted-foreground mt-1">Use a public image URL. Default is a placeholder.</p>
+                        <Button onClick={generatePortrait} disabled={generatingPortrait} size="sm" variant="outline" className="mt-2 w-full rounded-lg" data-testid="dc-generate-portrait-button">
+                            {generatingPortrait ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Painting…</> : <><ImageIcon className="h-3.5 w-3.5 mr-2" /> Generate portrait with AI</>}
+                        </Button>
+                        <p className="text-[11px] text-muted-foreground mt-1">Or paste any public image URL.</p>
                     </div>
                     <Button onClick={exportPng} disabled={downloading} className="w-full rounded-full" variant="outline" data-testid="dream-customer-export-png-button">
                         {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Download className="h-4 w-4 mr-2" /> Export as PNG (300dpi)</>}
@@ -295,7 +382,7 @@ function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep }) {
                     <p className="text-[11px] text-muted-foreground">Tip: edit any field in the Demographics or Psychographics tabs above to update the card.</p>
                 </div>
                 <div className="lg:col-span-2 flex justify-center">
-                    <div ref={cardRef} className="shrink-0" style={{ width: 420 }} data-testid="dream-customer-trading-card">
+                    <div ref={cardRef} className="shrink-0" style={{ width: 460 }} data-testid="dream-customer-trading-card">
                         <CardArtwork data={data} />
                     </div>
                 </div>
@@ -307,22 +394,39 @@ function DreamCard({ planId, getInput, setInput, markStepStatus, gotoStep }) {
 function CardArtwork({ data }) {
     return (
         <div className="rounded-[20px] p-3" style={{ background: "linear-gradient(135deg, #D2B56A 0%, #86653A 50%, #D2B56A 100%)" }}>
-            <div className="rounded-[16px] bg-[#FAF7F0] p-4 relative overflow-hidden" style={{ aspectRatio: "5/7" }}>
+            <div className="rounded-[16px] bg-[#FAF7F0] p-4 relative overflow-hidden" style={{ aspectRatio: "5/7.6" }}>
                 {/* Top bar */}
                 <div className="flex items-start justify-between mb-3">
                     <div>
                         <div className="text-[10px] uppercase tracking-[0.18em] text-[#86653A] font-sans">Dream Customer</div>
                         <div className="font-serif text-2xl text-[#292822] leading-tight">{data.name}</div>
                     </div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] px-2 py-1 rounded-full bg-[#031A01] text-[#D2B56A]">{data.nicheLabel}</div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] px-2 py-1 rounded-full bg-[#031A01] text-[#D2B56A] whitespace-nowrap">{data.nicheLabel}</div>
                 </div>
                 {/* Art window */}
                 <div className="relative rounded-md overflow-hidden border-2 border-[#D2B56A]" style={{ aspectRatio: "4/3" }}>
                     <img src={data.photoUrl} alt={data.name} crossOrigin="anonymous" className="w-full h-full object-cover" onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop"; }} />
                     <div className="absolute inset-0" style={{ background: "linear-gradient(120deg, rgba(255,255,255,0.05) 0%, rgba(210,181,106,0.06) 50%, rgba(255,255,255,0.05) 100%)" }} />
                 </div>
+                {/* Maslow & Needs strip */}
+                <div className="mt-2 grid grid-cols-2 gap-2 text-[9px] text-[#2F2F2F]">
+                    <div>
+                        <div className="uppercase tracking-[0.18em] text-[#86653A] mb-0.5">Maslow</div>
+                        <div className="flex flex-wrap gap-1">
+                            {data.maslow.length === 0 && <span className="text-[#86653A]/70">—</span>}
+                            {data.maslow.map((m) => (<span key={m} className="px-1.5 py-0.5 rounded bg-[#031A01]/90 text-[#D2B56A] leading-tight">{m}</span>))}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="uppercase tracking-[0.18em] text-[#86653A] mb-0.5">Core Needs</div>
+                        <div className="flex flex-wrap gap-1">
+                            {data.needs.length === 0 && <span className="text-[#86653A]/70">—</span>}
+                            {data.needs.map((n) => (<span key={n} className="px-1.5 py-0.5 rounded bg-[#D2B56A]/30 text-[#5a4520] leading-tight">{n}</span>))}
+                        </div>
+                    </div>
+                </div>
                 {/* Two columns */}
-                <div className="mt-3 grid grid-cols-2 gap-3 text-[10px] text-[#2F2F2F]">
+                <div className="mt-2 grid grid-cols-2 gap-3 text-[10px] text-[#2F2F2F]">
                     <div>
                         <div className="text-[9px] uppercase tracking-[0.18em] text-[#86653A] mb-1">Demographics</div>
                         <ul className="space-y-0.5">

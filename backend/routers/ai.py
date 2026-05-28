@@ -236,3 +236,118 @@ async def answer_question_json(body: AIRunIn, user: CurrentUser = Depends(requir
     msg = UserMessage(text=_user_prompt("answer", body, plan_context))
     text = await chat.send_message(msg)
     return {"text": text}
+
+
+# ============================== PORTRAIT GENERATION ==============================
+# Generates a photorealistic Dream Customer avatar via Gemini Nano Banana.
+# Uploads result to Supabase Storage (reuses iif-logos bucket) and persists URL
+# as plan_inputs.dc_photo. Frees the user from finding stock photos.
+import base64 as _b64
+import uuid as _uuid
+
+PORTRAIT_BUCKET = "iif-logos"  # reuse existing bucket (RLS already configured)
+
+
+class PortraitIn(BaseModel):
+    plan_id: str
+    style: Optional[str] = "editorial-portrait"  # editorial-portrait | corporate | candid | stylized
+
+
+def _build_portrait_prompt(plan_inputs: List[dict], style: str) -> str:
+    """Synthesize an image prompt from Demographics + Psychographics + Niche."""
+    by = {}
+    for row in plan_inputs:
+        if row.get("step_num") == 2:
+            by[row["field_key"]] = (row.get("value") or "").strip()
+    demo_bits, psycho_bits = [], []
+    for k, v in by.items():
+        if not v:
+            continue
+        if k.startswith("demo_"):
+            demo_bits.append(v[:120])
+        elif k.startswith("psycho_"):
+            psycho_bits.append(v[:120])
+    name = by.get("dc_name") or "Dream Customer"
+    niche = by.get("micro_niche_statement") or ""
+    style_hints = {
+        "editorial-portrait": "Editorial portrait photography, soft natural window light, shallow depth of field, warm cinematic color palette (creams, soft golds, charcoal), magazine-quality, hyper-realistic, 85mm lens, eye-level composition, neutral background.",
+        "corporate": "Polished professional headshot, studio lighting, neutral muted background, modern business attire, confident expression.",
+        "candid": "Candid lifestyle photography, natural environment, golden hour light, authentic expression, slightly grainy film aesthetic.",
+        "stylized": "Soft painterly portrait, slightly stylized realism, refined color grading, premium editorial feel.",
+    }.get(style, "")
+    return (
+        f"A single photorealistic portrait of one person named {name}, "
+        f"described by these traits — Demographics: {' | '.join(demo_bits) or 'unspecified'}. "
+        f"Psychographics: {' | '.join(psycho_bits) or 'unspecified'}. "
+        + (f"Their niche: {niche}. " if niche else "")
+        + style_hints
+        + " The portrait should be respectful, dignified, and inspirational. Avoid logos, brand marks, text, captions, or any watermarks. Square 1:1 aspect ratio."
+    )
+
+
+@router.post("/generate-portrait")
+async def generate_portrait(body: PortraitIn, user: CurrentUser = Depends(require_user)):
+    """Generate a Dream Customer portrait via Gemini Nano Banana, store it,
+    persist plan_inputs.dc_photo, and return the URL.
+
+    Step 2 is free, so no Pro gate.
+    """
+    # Verify ownership
+    cli = anon_client_with_token(user.token)
+    own = cli.table("plans").select("id").eq("id", body.plan_id).limit(1).execute()
+    if not own.data:
+        raise HTTPException(status_code=404, detail="Plan not found.")
+
+    # Gather plan_inputs to construct the prompt
+    inp = cli.table("plan_inputs").select("step_num,field_key,value").eq("plan_id", body.plan_id).execute()
+    prompt = _build_portrait_prompt(inp.data or [], body.style or "editorial-portrait")
+    logger.info("Portrait prompt for plan %s: %s", body.plan_id, prompt[:200])
+
+    # Call Nano Banana
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"portrait-{user.id}-{body.plan_id}-{_uuid.uuid4().hex[:6]}",
+            system_message="You are an image generation specialist creating editorial-quality portrait photography.",
+        ).with_model("gemini", "gemini-3.1-flash-image-preview").with_params(modalities=["image", "text"])
+        _, images = await chat.send_message_multimodal_response(UserMessage(text=prompt))
+    except Exception as e:
+        logger.exception("Nano Banana image generation failed")
+        raise HTTPException(status_code=502, detail=f"Image generation failed: {e}")
+
+    if not images:
+        raise HTTPException(status_code=502, detail="No image returned by the model.")
+
+    img = images[0]
+    try:
+        image_bytes = _b64.b64decode(img["data"])
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Invalid image payload: {e}")
+
+    mime = img.get("mime_type") or "image/png"
+    ext = "png" if "png" in mime else ("jpg" if "jpeg" in mime or "jpg" in mime else "webp")
+    object_path = f"{body.plan_id}/portrait_{_uuid.uuid4().hex[:8]}.{ext}"
+
+    # Upload to Supabase Storage
+    try:
+        admin.storage.from_(PORTRAIT_BUCKET).upload(
+            path=object_path,
+            file=image_bytes,
+            file_options={"content-type": mime, "cache-control": "3600", "upsert": "false"},
+        )
+    except Exception as e:
+        logger.exception("Storage upload failed")
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {e}")
+
+    public_url = admin.storage.from_(PORTRAIT_BUCKET).get_public_url(object_path)
+
+    # Persist URL as plan_inputs.dc_photo
+    try:
+        admin.table("plan_inputs").upsert(
+            {"plan_id": body.plan_id, "step_num": 2, "field_key": "dc_photo", "value": public_url},
+            on_conflict="plan_id,step_num,field_key",
+        ).execute()
+    except Exception as e:
+        logger.warning("Persist dc_photo failed: %s", e)
+
+    return {"url": public_url, "path": object_path}

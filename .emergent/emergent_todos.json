@@ -1,38 +1,50 @@
 [
   {
-    "content": "Create $397 Stripe Price via API + add price ID to backend/.env",
+    "content": "Backend: add portrait generation endpoint (Nano Banana) + Supabase Storage upload",
     "status": "completed"
   },
   {
-    "content": "Add pro_lifetime_unlimited tier to quota.py + access.py",
+    "content": "Step 2: AI Suggest Name + Generate Portrait buttons in DreamCard",
     "status": "completed"
   },
   {
-    "content": "Add lifetime_unlimited package + upgrade path + extras block in billing.py",
+    "content": "Step 2: Render Maslow + 6 Needs on Dream Customer Card artwork",
     "status": "completed"
   },
   {
-    "content": "Wire CLICKFUNNELS_TAG_LIFETIME_UNLIMITED + sync_purchase branch in clickfunnels service",
+    "content": "Step 3: Hero's Journey Founder + Customer narrations (AI synthesize)",
     "status": "completed"
   },
   {
-    "content": "Update CF webhook _process_purchase to detect $397 -> pro_lifetime_unlimited",
+    "content": "Step 3: HSO — AI offer stack suggester + smart price suggester",
     "status": "completed"
   },
   {
-    "content": "Update Pricing.jsx with 3-tier layout",
+    "content": "Step 3: Output card includes journeys + offers + stack + important stories + full Story Bank",
     "status": "completed"
   },
   {
-    "content": "Update Dashboard.jsx (unlimited quota display, hide extras)",
+    "content": "Step 4: Marketing Plan Generate-All button (8 fields x 2 tracks)",
     "status": "completed"
   },
   {
-    "content": "Update SubscriptionPanel.jsx label for new tier",
+    "content": "Step 4: 30/60/90 Calendar Generate-All button (16 cells)",
     "status": "completed"
   },
   {
-    "content": "E2E test the new tier (backend + frontend)",
+    "content": "Step 4: Palette HEX codes + Typography 3-level (headline/subheadline/body)",
     "status": "completed"
+  },
+  {
+    "content": "Step 4: Output card — full channel cards + website pages + marketing + calendar",
+    "status": "completed"
+  },
+  {
+    "content": "Exports: update PDF + DOCX with all new Step 2/3/4 fields",
+    "status": "completed"
+  },
+  {
+    "content": "E2E test Phase A (Steps 2/3/4)",
+    "status": "in_progress"
   }
 ]
