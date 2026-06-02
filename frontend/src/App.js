@@ -15,6 +15,9 @@ import ResetPassword from "@/pages/ResetPassword";
 import Dashboard from "@/pages/Dashboard";
 import PlanWizard from "@/pages/PlanWizard";
 import Pricing from "@/pages/Pricing";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import RefundPolicy from "@/pages/RefundPolicy";
 import PlanWorkspace from "@/pages/PlanWorkspace";
 import BusinessPlan from "@/pages/BusinessPlan";
 
@@ -33,6 +36,9 @@ export default function App() {
                             <Route element={<MarketingShell />}>
                                 <Route path="/" element={<Landing />} />
                                 <Route path="/pricing" element={<Pricing />} />
+                                <Route path="/privacy" element={<Privacy />} />
+                                <Route path="/terms" element={<Terms />} />
+                                <Route path="/refund-policy" element={<RefundPolicy />} />
                             </Route>
                             <Route path="/login" element={<Login />} />
                             <Route path="/signup" element={<Signup />} />
