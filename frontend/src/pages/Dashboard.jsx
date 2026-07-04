@@ -19,6 +19,7 @@ import { Plus, Loader2, FileText, Lock, Sparkles, Clock, Trash2, Layers, Infinit
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { STEPS } from "@/lib/steps";
+import { formatWelcomeName } from "@/lib/nameFormat";
 import SubscriptionPanel from "@/components/plans/SubscriptionPanel";
 
 export default function Dashboard() {
@@ -208,7 +209,7 @@ export default function Dashboard() {
             <div className="flex items-end justify-between mb-10">
                 <div>
                     <div className="label-eyebrow mb-2 text-brand-bronze">Your workspace</div>
-                    <h1 className="font-serif text-4xl md:text-5xl tracking-[-0.02em]">Welcome{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}.</h1>
+                    <h1 className="font-serif text-4xl md:text-5xl tracking-[-0.02em]" data-testid="dashboard-welcome-heading">Welcome{profile?.full_name ? `, ${formatWelcomeName(profile.full_name)}` : ""}.</h1>
                     <p className="mt-2 text-muted-foreground">{plans === null ? "Loading…" : plans.length === 0 ? "Begin your first plan — it takes about 60 seconds to set up." : `You have ${plans.length} plan${plans.length === 1 ? "" : "s"}.`}</p>
                 </div>
                 <Button onClick={startNewPlan} className="cta-red rounded-xl h-11 px-5" disabled={creating} data-testid="new-plan-button">

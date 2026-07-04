@@ -239,10 +239,10 @@ export const CHIEF_AIM_PROMPTS = [
 ];
 
 export const CHIEF_AIM_HORIZONS = [
-    { key: "q3", label: "3-Month Goal", helper: "Your nearest-horizon win — within the next quarter." },
-    { key: "y1", label: "1-Year Goal", helper: "Where you intend to be 12 months from now." },
-    { key: "y3", label: "3-Year Goal", helper: "The medium-term horizon that compounds your work." },
-    { key: "y5", label: "5-Year Goal", helper: "The long-arc transformation you are building toward." }
+    { key: "y5", label: "5-Year Goal", helper: "The long-arc transformation you are building toward. Start here — cast the biggest vision first." },
+    { key: "y3", label: "3-Year Goal", helper: "The medium-term horizon — what must be true 3 years out to keep you on the 5-year trajectory." },
+    { key: "y1", label: "1-Year Goal", helper: "12 months from now — the concrete milestone that proves you're on the 3-year path." },
+    { key: "q3", label: "3-Month Goal", helper: "Your nearest-horizon win — the next-quarter action that anchors everything above." }
 ];
 
 export const CHIEF_AIM_QUOTE = {

@@ -632,10 +632,26 @@ function MTPSection({ planId, getInput, setInput }) {
                         </RawDialogContent>
                     </RawDialog>
                 </div>
-                {getInput(1, "mtp_statement") && (
+                {(getInput(1, "mtp_statement") || synthBusy) && (
                     <div className="mt-5 border-t border-white/10 pt-5">
-                        <div className="label-eyebrow text-brand-gold mb-2">Your MTP</div>
-                        <div className="font-serif text-2xl md:text-3xl italic leading-tight" data-testid="mtp-statement-output">“{getInput(1, "mtp_statement")}”</div>
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="label-eyebrow text-brand-gold">Your MTP</div>
+                            <div className="text-[11px] uppercase tracking-[0.18em] text-brand-cream/60">Editable · Refine as needed</div>
+                        </div>
+                        <div className="rounded-xl bg-brand-cream text-brand-charcoal p-4 md:p-5">
+                            <AIAssistInput
+                                planId={planId}
+                                stepNum={1}
+                                fieldKey="mtp_statement"
+                                fieldLabel="Your MTP (8–10 words, inspirational)"
+                                subModule="MTP Discovery"
+                                rows={2}
+                                placeholder="Click ‘Synthesize my MTP’ above, or write your own. Edit freely afterward."
+                                value={getInput(1, "mtp_statement")}
+                                onChange={(v) => setInput(1, "mtp_statement", v)}
+                                testIdPrefix="mtp-statement-field"
+                            />
+                        </div>
                     </div>
                 )}
             </div>
@@ -766,7 +782,7 @@ function DeepWhySection({ planId, getInput, setInput }) {
 function ChiefAimSection({ planId, getInput, setInput }) {
     const mtp = getInput(1, "mtp_statement") || "";
     return (
-        <Section eyebrow="Definite Chief Aim" title="Your aim, in writing." helper="Set High Hard Goals at four horizons: 3 months, 1 year, 3 years, 5 years.">
+        <Section eyebrow="Definite Chief Aim" title="Your aim, in writing." helper="Set High Hard Goals across four horizons — starting with the 5-year vision and stepping down to your 3-month next move.">
             {/* MTP read-only banner */}
             <div className="editorial-card p-5 mb-6 bg-secondary/40" data-testid="chief-mtp-banner">
                 <div className="label-eyebrow text-brand-bronze mb-1">Your MTP</div>
@@ -861,10 +877,10 @@ function OutputCard({ planId, getInput, markStepStatus, gotoStep }) {
                 <div className="py-3">
                     <div className="label-eyebrow text-brand-bronze mb-2">Chief Aim (WHAT)</div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="output-chief-aim-grid">
-                        <ChiefAimRow horizon="3-Month Goal" value={data.aim_q3_what} testId="output-chief-q3-what" />
-                        <ChiefAimRow horizon="1-Year Goal" value={data.aim_y1_what} testId="output-chief-y1-what" />
-                        <ChiefAimRow horizon="3-Year Goal" value={data.aim_y3_what} testId="output-chief-y3-what" />
                         <ChiefAimRow horizon="5-Year Goal" value={data.aim_y5_what} testId="output-chief-y5-what" />
+                        <ChiefAimRow horizon="3-Year Goal" value={data.aim_y3_what} testId="output-chief-y3-what" />
+                        <ChiefAimRow horizon="1-Year Goal" value={data.aim_y1_what} testId="output-chief-y1-what" />
+                        <ChiefAimRow horizon="3-Month Goal" value={data.aim_q3_what} testId="output-chief-q3-what" />
                     </div>
                 </div>
 

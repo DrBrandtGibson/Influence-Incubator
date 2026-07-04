@@ -7,11 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Sparkles, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STAGES = ["Just an idea", "Working on it part-time", "Already have customers", "Established and growing"];
+
+// Voomly intro video: paste the embed URL below when you receive it from Voomly.
+// The URL should be the "iframe embed" URL (e.g. https://embed.voomly.com/embed/assets/videos/xxxxxxxx/video)
+// Leave as empty string to hide the intro slide entirely.
+const VOOMLY_INTRO_EMBED_URL = "";
 
 export default function PlanWizard() {
     const { isPro } = useAuth();
@@ -26,13 +31,24 @@ export default function PlanWizard() {
         stage: ""
     });
 
-    const slides = [
+    const introSlide = {
+        key: "intro",
+        type: "video",
+        label: "Welcome to your Spark.",
+        helper: "A quick word from Dr. Brandt Gibson before you begin. This takes ~60 seconds.",
+        embedUrl: VOOMLY_INTRO_EMBED_URL
+    };
+    const questionSlides = [
         { key: "idea", label: "What’s the spark?", helper: "Describe your business idea in plain language. One sentence is enough.", required: true, type: "textarea", placeholder: "e.g. A wellness coaching practice helping high-achieving women stop burning out." },
         { key: "title", label: "Give your plan a working title.", helper: "Optional. You can change this later.", type: "input", placeholder: "e.g. The Inner Compass Practice" },
         { key: "founder_backstory", label: "What’s your story?", helper: "Two or three sentences about you and why you care about this.", type: "textarea", placeholder: "e.g. After 10 years as a therapist I saw the gap between awareness and action…" },
         { key: "industry", label: "What industry is this in?", helper: "Pick the closest fit.", type: "input", placeholder: "e.g. Wellness, Coaching, Education, SaaS…" },
         { key: "stage", label: "Where are you today?", helper: "Be honest — we’ll meet you where you are.", type: "select", options: STAGES }
     ];
+
+    // Intro slide is always present so the "placeholder" is visible; paste the
+    // Voomly embed URL into VOOMLY_INTRO_EMBED_URL above to make it play.
+    const slides = [introSlide, ...questionSlides];
 
     const cur = slides[step];
 
@@ -101,6 +117,28 @@ export default function PlanWizard() {
                         <h1 className="font-serif text-3xl md:text-4xl tracking-[-0.02em]">{cur.label}</h1>
                         {cur.helper && <p className="mt-2 text-muted-foreground text-sm">{cur.helper}</p>}
                         <div className="mt-7">
+                            {cur.type === "video" && (
+                                <div className="editorial-card overflow-hidden" data-testid="wizard-intro-video">
+                                    <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+                                        {cur.embedUrl ? (
+                                            <iframe
+                                                src={cur.embedUrl}
+                                                title="Introduction video"
+                                                className="absolute inset-0 h-full w-full"
+                                                frameBorder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                allowFullScreen
+                                                data-testid="wizard-intro-video-iframe"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-secondary/60 text-muted-foreground">
+                                                <PlayCircle className="h-10 w-10" />
+                                                <p className="text-sm">Intro video coming soon.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             {cur.type === "textarea" && (
                                 <Textarea autoFocus value={data[cur.key]} onChange={(e) => setData({ ...data, [cur.key]: e.target.value })} className="min-h-[150px] rounded-xl" placeholder={cur.placeholder} data-testid={`wizard-${cur.key}-input`} />
                             )}

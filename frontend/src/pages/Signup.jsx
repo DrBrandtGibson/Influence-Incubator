@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,20 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { AuthShell } from "./Login";
 
 export default function Signup() {
-    const { signUp, signIn } = useAuth();
+    const { signUp, signIn, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [showVerifyMsg, setShowVerifyMsg] = useState(false);
+
+    // Already-authenticated users skip the signup form and go straight to Dashboard.
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [authLoading, isAuthenticated, navigate]);
 
     async function onSubmit(e) {
         e.preventDefault();

@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Lock, Check, Sparkles, ArrowRight, Quote, Infinity as InfinityIcon } from "lucide-react";
 import { STEPS } from "@/lib/steps";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useAuth } from "@/context/AuthContext";
 
 const fadeUp = {
     hidden: { opacity: 0, y: 18 },
@@ -14,10 +15,19 @@ const fadeUp = {
 export default function Landing() {
     const reduce = useReducedMotion();
     const variants = reduce ? { hidden: { opacity: 1 }, show: { opacity: 1 } } : fadeUp;
+    const { isAuthenticated, loading } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         document.title = "The Influence Incubator Formula — Build your business plan, beautifully.";
     }, []);
+
+    // Auto-redirect signed-in users straight to their Dashboard.
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [loading, isAuthenticated, navigate]);
 
     return (
         <div data-testid="landing-page">

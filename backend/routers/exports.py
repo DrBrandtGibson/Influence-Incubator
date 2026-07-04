@@ -70,10 +70,10 @@ LABELS: Dict[int, List[tuple]] = {
         ("mtp_statement", "Massive Transformative Purpose"),
         ("fp_q5", "Purpose Statement"),
         ("why_level_7", "Deep WHY"),
-        ("chief_q3_what", "3-Month Goal (WHAT)"),
-        ("chief_y1_what", "1-Year Goal (WHAT)"),
-        ("chief_y3_what", "3-Year Goal (WHAT)"),
         ("chief_y5_what", "5-Year Goal (WHAT)"),
+        ("chief_y3_what", "3-Year Goal (WHAT)"),
+        ("chief_y1_what", "1-Year Goal (WHAT)"),
+        ("chief_q3_what", "3-Month Goal (WHAT)"),
         ("structure_chosen", "Business Structure"),
     ],
     2: [

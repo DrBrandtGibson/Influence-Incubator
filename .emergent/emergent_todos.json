@@ -1,30 +1,26 @@
 [
   {
-    "content": "a) Tighten CORS to env-driven allowlist",
+    "content": "Fix 1: Add Voomly intro video slide to PlanWizard",
     "status": "completed"
   },
   {
-    "content": "a) Add Sentry (backend + frontend) with env-var DSN toggle",
+    "content": "Fix 2: Allow editing 'Your MTP' after synthesis",
     "status": "completed"
   },
   {
-    "content": "a) Add PostHog analytics with env-var toggle + key event tracking",
+    "content": "Fix 3: Reverse Chief Aim order (5y → 3mo)",
     "status": "completed"
   },
   {
-    "content": "b) Add SMTP env vars + email service module (aiosmtplib)",
+    "content": "Fix 4a: Redirect authenticated users from Landing/Login/Signup to /dashboard",
     "status": "completed"
   },
   {
-    "content": "b) Wire welcome + plan-ready + refund-confirmation emails",
-    "status": "completed"
-  },
-  {
-    "content": "b) Send test email to verify config",
-    "status": "completed"
-  },
-  {
-    "content": "c) Prepare Stripe live-mode migration checklist + create prices script",
+    "content": "Fix 4b: Create formatWelcomeName utility (titles + single-letter initials) and use in Dashboard",
     "status": "in_progress"
+  },
+  {
+    "content": "Verify all fixes with testing_agent",
+    "status": "pending"
   }
 ]

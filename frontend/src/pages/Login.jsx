@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,24 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { LOGO_URL } from "@/lib/brand";
 
 export default function Login() {
-    const { signIn } = useAuth();
+    const { signIn, isAuthenticated, loading } = useAuth();
     const navigate = useNavigate();
     const loc = useLocation();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // If already signed in (or session restored after auto-login), skip the form and land on Dashboard.
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            const dest = loc.state?.from || "/dashboard";
+            navigate(dest, { replace: true });
+        }
+    }, [loading, isAuthenticated, loc.state, navigate]);
 
     async function onSubmit(e) {
         e.preventDefault();
-        setLoading(true);
+        setSubmitting(true);
         try {
             await signIn(email, password);
             toast.success("Welcome back.");
@@ -28,7 +36,7 @@ export default function Login() {
         } catch (err) {
             toast.error(err.message || "Could not sign in.");
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     }
 
@@ -46,8 +54,8 @@ export default function Login() {
                     </div>
                     <PasswordInput id="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 h-11 rounded-xl" data-testid="login-password-input" />
                 </div>
-                <Button type="submit" disabled={loading} className="cta-red w-full h-11 rounded-xl" data-testid="login-submit-button">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign in <ArrowRight className="ml-2 h-4 w-4" /></>}
+                <Button type="submit" disabled={submitting} className="cta-red w-full h-11 rounded-xl" data-testid="login-submit-button">
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Sign in <ArrowRight className="ml-2 h-4 w-4" /></>}
                 </Button>
             </form>
             <p className="mt-6 text-sm text-muted-foreground text-center">

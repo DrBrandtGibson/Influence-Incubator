@@ -202,10 +202,10 @@ export default function BusinessPlan() {
                     <Field label="Massive Transformative Purpose" value={get(1, "mtp_statement")} multiline />
                     <Field label="Deep WHY" value={get(1, "why_level_7")} multiline />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-                        <Field label="3-Month Goal" value={get(1, "chief_q3_what")} multiline />
-                        <Field label="1-Year Goal" value={get(1, "chief_y1_what")} multiline />
-                        <Field label="3-Year Goal" value={get(1, "chief_y3_what")} multiline />
                         <Field label="5-Year Goal" value={get(1, "chief_y5_what")} multiline />
+                        <Field label="3-Year Goal" value={get(1, "chief_y3_what")} multiline />
+                        <Field label="1-Year Goal" value={get(1, "chief_y1_what")} multiline />
+                        <Field label="3-Month Goal" value={get(1, "chief_q3_what")} multiline />
                     </div>
                     <Field label="Business Structure" value={get(1, "structure_chosen")} />
                 </Card>
