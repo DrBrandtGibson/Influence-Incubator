@@ -27,6 +27,8 @@ export default function Signup() {
         setLoading(true);
         try {
             await signUp(email, password, fullName);
+            const { track } = await import("@/lib/telemetry");
+            track("signup_completed", { has_name: Boolean(fullName) });
             toast.success("Welcome aboard.");
             navigate("/dashboard");
         } catch (err) {

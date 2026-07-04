@@ -1,38 +1,30 @@
 [
   {
-    "content": "Step 6: Expand Live Events with event types list",
+    "content": "a) Tighten CORS to env-driven allowlist",
     "status": "completed"
   },
   {
-    "content": "Step 6: Rename output card to 'EXPAND Your Influence Card'",
+    "content": "a) Add Sentry (backend + frontend) with env-var DSN toggle",
     "status": "completed"
   },
   {
-    "content": "Step 7: Add customer journey map + onboarding + surprise/delight + quality standards + feedback loop",
+    "content": "a) Add PostHog analytics with env-var toggle + key event tracking",
     "status": "completed"
   },
   {
-    "content": "Step 7: 'Finish my Plan' button -> Business Plan page",
+    "content": "b) Add SMTP env vars + email service module (aiosmtplib)",
     "status": "completed"
   },
   {
-    "content": "Backend: AI to-do list endpoint (10 items based on full plan)",
+    "content": "b) Wire welcome + plan-ready + refund-confirmation emails",
     "status": "completed"
   },
   {
-    "content": "Business Plan page: route, layout with all 7 cards + AI to-do list + Print",
+    "content": "b) Send test email to verify config",
     "status": "completed"
   },
   {
-    "content": "Dashboard: permanent link to Business Plan for completed plans",
-    "status": "completed"
-  },
-  {
-    "content": "Exports: include new Step 6/7 fields + Business Plan summary in PDF/DOCX",
-    "status": "completed"
-  },
-  {
-    "content": "E2E test Phase B",
-    "status": "completed"
+    "content": "c) Prepare Stripe live-mode migration checklist + create prices script",
+    "status": "in_progress"
   }
 ]

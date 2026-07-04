@@ -602,6 +602,15 @@ async def self_serve_refund(user: CurrentUser = Depends(require_user)):
         raise HTTPException(status_code=502, detail=f"Stripe refund failed: {e.user_message or str(e)}")
 
     _downgrade_to_free(user.id, reason="self_serve_refund")
+    # Fire-and-forget refund confirmation email
+    try:
+        from services import email_service as em
+        import asyncio
+        full_name = (profile.get("full_name") or "").strip() or None
+        amount_display = f"${refunded_amount / 100:.2f}"
+        asyncio.create_task(em.send_refund_confirmation(profile.get("email") or user.email, full_name, amount_display, expected_days=5))
+    except Exception as e:
+        logger.warning("Refund email dispatch failed: %s", e)
     return RefundResponse(ok=True, refunded_amount=refunded_amount, message="Refund issued successfully.")
 
 

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { authedFetch, supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { track } from "@/lib/telemetry";
 
 export function useStartCheckout() {
     const [loading, setLoading] = useState(null); // 'lifetime' | 'monthly' | null
@@ -23,6 +24,7 @@ export function useStartCheckout() {
         }
         setLoading(pkg);
         try {
+            track("checkout_started", { package: pkg });
             const res = await authedFetch("/billing/checkout", {
                 method: "POST",
                 body: JSON.stringify({

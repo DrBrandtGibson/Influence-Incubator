@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase, authedFetch } from "@/lib/supabase";
+import { identify, reset } from "@/lib/telemetry";
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,8 @@ export function AuthProvider({ children }) {
             if (res.ok) {
                 const data = await res.json();
                 setProfile(data);
+                // Identify in telemetry so events attribute to this user
+                if (data?.id) identify(data.id, { email: data.email, subscription_status: data.subscription_status });
             } else {
                 console.warn("refreshProfile non-OK response:", res.status);
             }
@@ -80,6 +83,7 @@ export function AuthProvider({ children }) {
 
     const signOut = async () => {
         await supabase.auth.signOut();
+        reset(); // Clear telemetry user identity
         setProfile(null);
     };
 

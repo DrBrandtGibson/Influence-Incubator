@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-key -- UL wraps each item in a keyed <li> */
 import { LegalShell, H, P, UL } from "@/components/legal/LegalShell";
 import { Link } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";

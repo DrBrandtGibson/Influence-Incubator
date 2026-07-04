@@ -130,9 +130,25 @@ class StepStatusIn(BaseModel):
 @router.post("/{plan_id}/step-status")
 async def update_step_status(plan_id: str, body: StepStatusIn, user: CurrentUser = Depends(require_user)):
     cli = anon_client_with_token(user.token)
-    own = cli.table("plans").select("id").eq("id", plan_id).limit(1).execute()
+    own = cli.table("plans").select("id,title").eq("id", plan_id).limit(1).execute()
     if not own.data:
         raise HTTPException(status_code=404, detail="Plan not found")
     payload = {"plan_id": plan_id, "step_num": body.step_num, "status": body.status, "data": body.data or {}}
     res = cli.table("plan_steps").upsert(payload, on_conflict="plan_id,step_num").execute()
+
+    # Fire plan-ready email when Step 7 flips to complete for the first time
+    if body.step_num == 7 and (body.status or "").lower() in ("complete", "completed"):
+        try:
+            import os
+            import asyncio
+            from services import email_service as em
+            plan_title = own.data[0].get("title") or "Your Plan"
+            app_url = os.environ.get("APP_PUBLIC_URL", "https://influenceincubator.xyz").rstrip("/")
+            business_plan_url = f"{app_url}/plans/{plan_id}/business-plan"
+            prof = cli.table("profiles").select("email,full_name").eq("id", user.id).limit(1).execute().data
+            if prof:
+                asyncio.create_task(em.send_plan_ready(prof[0].get("email") or user.email, prof[0].get("full_name"), plan_title, business_plan_url))
+        except Exception as _e:
+            pass  # never block the response for email issues
+
     return res.data[0] if res.data else payload

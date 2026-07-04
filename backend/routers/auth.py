@@ -4,8 +4,10 @@ so users can immediately sign in without an email-verification round-trip
 """
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, EmailStr
+import os
 from auth_supabase import admin
 from services import clickfunnels as cf
+from services import email_service as em
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,6 +36,9 @@ async def signup(body: SignupIn, background_tasks: BackgroundTasks):
         email = getattr(user, "email", None) or user.get("email")
         # Fire-and-forget: push contact + signup tag to ClickFunnels
         background_tasks.add_task(cf.sync_signup, email, body.full_name)
+        # Fire-and-forget: send welcome email
+        app_url = os.environ.get("APP_PUBLIC_URL", "https://influenceincubator.xyz").rstrip("/")
+        background_tasks.add_task(em.send_welcome, email, body.full_name, app_url)
         return {"id": uid, "email": email}
     except HTTPException:
         raise

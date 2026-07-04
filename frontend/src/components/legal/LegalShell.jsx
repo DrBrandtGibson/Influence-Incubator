@@ -53,7 +53,7 @@ export function UL({ items }) {
     return (
         <ul className="my-4 space-y-2 pl-5">
             {items.map((it, i) => (
-                <li key={i} className="list-disc list-outside marker:text-brand-bronze pl-1">
+                <li key={typeof it === "string" ? it.slice(0, 48) : i} className="list-disc list-outside marker:text-brand-bronze pl-1">
                     {it}
                 </li>
             ))}
